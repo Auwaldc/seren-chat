@@ -1,6 +1,5 @@
-
-telethon
-requests
 fastapi
 uvicorn
-asyncio
+telethon
+requests
+pydantic
