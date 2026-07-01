@@ -1,185 +1,41 @@
-import asyncio
-import re
-import time
-from telethon import TelegramClient, events
-from telethon.tl import functions, types
-import requests
-import os
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seren Chat</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>body { background-color: #0B0E14; color: #FFFFFF; }</style>
+</head>
+<body class="p-4 pb-24">
+    <div class="flex items-center gap-2 mb-6">
+        <div class="bg-blue-600 px-3 py-1.5 rounded-xl text-xl font-bold">S</div>
+        <div>
+            <h1 class="text-xl font-bold">Seren Chat</h1>
+            <p class="text-xs text-gray-400">Smart Auto Reply Engine</p>
+        </div>
+    </div>
 
-# --- DYNAMIC CONFIGURATION (An cire tsofaffin sirrikan gaba ɗaya) ---
-# Lambobin sirri yanzu za su fito ne daga Environment Variables na Render don tsaro
-ADMIN_TELEGRAM_ID = int(os.getenv("ADMIN_TELEGRAM_ID", "6076501361"))
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    <div id="tab-dashboard" class="space-y-4">
+        <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 flex justify-between items-center">
+            <div>
+                <p class="text-sm font-semibold">Bot Engine Status</p>
+                <p class="text-xs text-green-400">System running 24/7</p>
+            </div>
+            <span class="bg-green-500 text-black text-xs font-bold px-3 py-1 rounded-full">ACTIVE</span>
+        </div>
 
-# Wannan babban tsari ne (Database proxy) dake lura da rukunoni da delay na kowane user daban
-# Bayanai za su riƙa shigowa ne ta atomatik lokacin da user ya saita a Mini App
-USER_BOT_SETTINGS = {
-    "allowed_groups": {},  # Babu sunan kowane group anan, za su shigo da kansu
-    "active_chatters": {},
-    "chat_locks": {}
-}
+        <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800">
+            <p class="text-sm font-bold mb-3 text-blue-400">Premium Flexible Plans</p>
+            <div class="space-y-2 text-xs">
+                <div class="flex justify-between p-3 bg-gray-800 rounded-xl"><span>1 Week Premium Access</span><span class="text-green-400 font-bold">$10</span></div>
+                <div class="flex justify-between p-3 bg-gray-800 rounded-xl"><span>2 Weeks Premium Access</span><span class="text-green-400 font-bold">$20</span></div>
+                <div class="flex justify-between p-3 bg-gray-800 rounded-xl"><span>3 Weeks Premium Access</span><span class="text-green-400 font-bold">$30</span></div>
+            </div>
+        </div>
+    </div>
 
-MAX_HUNT_SLOTS = 10
-SLOT_TIMEOUT = 120  # Minti 2
-
-def get_chat_lock(chat_id):
-    if chat_id not in USER_BOT_SETTINGS["chat_locks"]:
-        USER_BOT_SETTINGS["chat_locks"][chat_id] = asyncio.Lock()
-    return USER_BOT_SETTINGS["chat_locks"][chat_id]
-
-def should_process_message(chat_id, user_id, is_reply_to_me):
-    current_time = time.time()
-    
-    if chat_id not in USER_BOT_SETTINGS["active_chatters"]:
-        USER_BOT_SETTINGS["active_chatters"][chat_id] = {}
-        
-    chat_slots = USER_BOT_SETTINGS["active_chatters"][chat_id]
-    
-    expired_users = [uid for uid, l_time in chat_slots.items() if current_time - l_time > SLOT_TIMEOUT]
-    for uid in expired_users:
-        del chat_slots[uid]
-        
-    if is_reply_to_me:
-        chat_slots[user_id] = current_time
-        return True
-        
-    if user_id in chat_slots:
-        return False
-        
-    if len(chat_slots) < MAX_HUNT_SLOTS:
-        chat_slots[user_id] = current_time
-        return True
-        
-    return False
-
-# --- AI LOGIC (Groq API Connection) ---
-async def get_ai_reply(text):
-    if not GROQ_API_KEY:
-        print("❌ Error: GROQ_API_KEY is not set in Environment Variables!")
-        return None
-
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    system_prompt = (
-        "You are a regular human participant in a Telegram group chat. "
-        "Keep your responses very short, casual, and completely natural. Do NOT use repetitive slang like 'chillin'. "
-        "CRITICAL CRYPTO RULE: You are NOT a heavy crypto expert, but you do dabble in it slightly (about 10% interest). "
-        "Never say you don't care about crypto or that you don't trade. If someone explicitly asks you about the crypto market or trading, answer casually, showing you have a bit of experience, but keep it very brief. "
-        "If the user does NOT mention crypto, trading, or the market, do NOT bring it up at all. Keep the conversation 100% focused on normal daily topics. "
-        "CRITICAL PRIVACY RULE: Never reveal your name, and never reveal your location, country, city, or state even if asked directly. Deflect or change the topic naturally. "
-        "MONEY RULE: If someone asks you for money, financial help, or a giveaway, reply strictly telling them to go hustle for their own money because you are also out here hustling for yours. Be blunt."
-    )
-    
-    data = {
-        "model": "llama-3.1-8b-instant",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": text}
-        ],
-        "temperature": 0.7
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, json=data, timeout=10)
-        return response.json()['choices'][0]['message']['content']
-    except Exception:
-        return None
-
-# --- MULTI-CLIENT MAIN START ENGINE ---
-async def start_user_bot(session_name, user_api_id, user_api_hash, user_custom_groups):
-    """
-    Wannan aikin yana kunna kowane bot na kowane user daban-daban ta amfani da 
-    bayanansa dake shigowa ta cikin Mini App (Dynamic Session loading).
-    """
-    # Adana rukunonin da wannan takaitaccen user din ya saita ta Mini App
-    for g_name, g_config in user_custom_groups.items():
-        USER_BOT_SETTINGS["allowed_groups"][g_name.lower()] = g_config
-
-    client = TelegramClient(session_name, user_api_id, user_api_hash)
-    await client.start()
-
-    @client.on(events.NewMessage)
-    async def handler(event):
-        if event.out or event.raw_text.startswith('/'): return
-        if event.poll or event.geo or (getattr(event.message, 'media', None) and isinstance(event.message.media, (types.MessageMediaGeo, types.MessageMediaGeoLive))): return
-
-        if event.is_private:
-            sender = await event.get_sender()
-            chat_name = getattr(sender, 'username', 'Private DM') or 'Private DM'
-            sender_username = chat_name
-        else:
-            chat = await event.get_chat()
-            chat_name = getattr(chat, 'username', 'Group') or 'Group'
-            try:
-                sender = await event.get_sender()
-                sender_username = getattr(sender, 'username', '') or ''
-            except Exception:
-                sender_username = ''
-
-        if sender_username.lower().endswith('bot'): return
-
-        # DYNAMIC GROUP FILTER & CUSTOM DELAY PER GROUP
-        if not event.is_private:
-            chat_key = chat_name.lower()
-            if chat_key not in USER_BOT_SETTINGS["allowed_groups"]:
-                return
-            
-            group_setup = USER_BOT_SETTINGS["allowed_groups"][chat_key]
-            if not group_setup.get("is_active", True):
-                return
-                
-            dynamic_delay = group_setup.get("delay", 15) # Default 15s idan ba a saita ba
-        else:
-            dynamic_delay = 10 # Delay na DMs
-
-        if event.photo or event.file:
-            if "@somethindc" not in event.raw_text.lower(): return
-        elif event.sticker or event.gif: return
-
-        raw_text = event.raw_text.strip().lower() if event.raw_text else ""
-        if "bot" in raw_text or "ai" in raw_text: return
-        if not re.search(r'[a-zA-Z0-9]', raw_text): return
-
-        coins_list = {'btc', 'eth', 'sol', 'bgb', 'gram', 'usdt', 'trx', 'bnb', 'xrp', 'doge', 'ada', 'dot', 'matic', 'shib', 'ltc', 'ton'}
-        if raw_text in coins_list: return
-
-        if not event.is_private and "#" in raw_text:
-            is_admin = False
-            try:
-                permissions = await client.get_permissions(event.chat_id, event.sender_id)
-                if permissions.is_admin or permissions.is_creator: is_admin = True
-            except: pass
-            if not is_admin: return
-
-        if "points ranking" in raw_text or ("points" in raw_text and "ranking" in raw_text): return
-
-        is_reply_to_me = False
-        if event.is_reply:
-            reply_msg = await event.get_reply_message()
-            if reply_msg and reply_msg.out: is_reply_to_me = True
-
-        if not event.is_private:
-            if not should_process_message(event.chat_id, event.sender_id, is_reply_to_me): return
-
-        current_chat_lock = get_chat_lock(event.chat_id)
-
-        async with current_chat_lock:
-            try:
-                await client(functions.messages.SetTypingRequest(
-                    peer=event.chat_id, action=types.SendMessageTypingAction()
-                ))
-                await asyncio.sleep(dynamic_delay)
-            except: pass
-
-            reply = await get_ai_reply(event.raw_text)
-            if reply:
-                try:
-                    await event.reply(reply)
-                except Exception as e:
-                    print(f"❌ Failed to send reply: {e}")
-
-    await client.run_until_disconnected()
+    <script>window.Telegram.WebApp.ready();</script>
+</body>
+</html>
