@@ -7,71 +7,317 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background-color: #0B0E14; color: #FFFFFF; font-family: sans-serif; }
-        .nav-active { color: #1C9BE0; font-weight: bold; }
+        body { background-color: #080711; color: #FFFFFF; font-family: sans-serif; -webkit-user-select: none; user-select: none; }
+        .purple-gradient { background: linear-gradient(135deg, #1C123C 0%, #0B071E 100%); }
+        .card-bg { background-color: #121026; border: 1px solid #1F1B40; }
+        .nav-active { color: #A855F7; }
+        .nav-active svg { fill: #A855F7; }
     </style>
 </head>
-<body class="p-4 pb-24">
+<body class="p-4 pb-28">
 
-    <div class="flex items-center gap-2 mb-6">
-        <div class="bg-blue-600 px-3 py-1.5 rounded-xl text-xl font-bold">S</div>
-        <div>
-            <h1 class="text-xl font-bold">Seren Chat</h1>
-            <p class="text-xs text-gray-400">Smart Auto Reply Engine</p>
+    <!-- 0. WELCOME / REGISTRATION SCREEN (FITOWA TA FARKO KAWAI) -->
+    <div id="auth-screen" class="fixed inset-0 bg-[#080711] z-50 p-6 flex flex-col justify-center space-y-6">
+        <div class="text-center space-y-2 mb-4">
+            <h1 class="text-2xl font-black tracking-wide text-purple-400">Connect Telegram Account</h1>
+            <p class="text-xs text-gray-400">Link your Telethon session to start using Seren Engine</p>
         </div>
-    </div>
 
-    <div id="tab-dashboard" class="tab-content space-y-4">
-        <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 flex justify-between items-center">
+        <div class="card-bg p-5 rounded-3xl space-y-4">
             <div>
-                <p class="text-sm font-semibold">Bot Engine Status</p>
-                <p class="text-xs text-green-400">System running 24/7</p>
+                <label class="text-[11px] text-purple-300 font-bold block mb-1">Telegram API ID</label>
+                <input type="number" id="reg-api-id" placeholder="e.g., 123456" class="w-full p-3.5 bg-purple-950/40 rounded-2xl border border-purple-900/50 text-sm focus:outline-none focus:border-purple-500">
             </div>
-            <span class="bg-green-500 text-black text-xs font-bold px-3 py-1 rounded-full">ACTIVE</span>
-        </div>
 
-        <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800">
-            <p class="text-sm font-bold mb-3 text-blue-400">Premium Flexible Plans</p>
-            <div class="space-y-2 text-xs">
-                <div class="flex justify-between p-3 bg-gray-800 rounded-xl"><span>1 Week Premium Access</span><span class="text-green-400 font-bold">$10</span></div>
-                <div class="flex justify-between p-3 bg-gray-800 rounded-xl"><span>2 Weeks Premium Access</span><span class="text-green-400 font-bold">$20</span></div>
-                <div class="flex justify-between p-3 bg-gray-800 rounded-xl"><span>3 Weeks Premium Access</span><span class="text-green-400 font-bold">$30</span></div>
+            <div>
+                <label class="text-[11px] text-purple-300 font-bold block mb-1">Telegram API Hash</label>
+                <input type="text" id="reg-api-hash" placeholder="e.g., abcde123456789..." class="w-full p-3.5 bg-purple-950/40 rounded-2xl border border-purple-900/50 text-sm focus:outline-none focus:border-purple-500">
+            </div>
+
+            <div>
+                <label class="text-[11px] text-purple-300 font-bold block mb-1">Phone Number</label>
+                <div class="flex gap-2">
+                    <!-- Dropdown na zaban lambar kasa -->
+                    <select id="reg-country-code" class="p-3.5 bg-purple-950/40 rounded-2xl border border-purple-900/50 text-sm text-gray-300 focus:outline-none">
+                        <option value="+234">🇳🇬 +234</option>
+                        <option value="+1">🇺🇸 +1</option>
+                        <option value="+44">🇬🇧 +44</option>
+                        <option value="+966">🇸🇦 +966</option>
+                    </select>
+                    <input type="tel" id="reg-phone" placeholder="8123456789" class="w-full p-3.5 bg-purple-950/40 rounded-2xl border border-purple-900/50 text-sm focus:outline-none focus:border-purple-500">
+                </div>
+            </div>
+
+            <button onclick="handleRegistration()" class="w-full py-4 bg-green-600 hover:bg-green-500 rounded-2xl font-bold text-sm text-black active:scale-95 transition-transform shadow-lg shadow-green-600/10 mt-2">
+                Request OTP
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN APP STRUCTURE (YANA ƁUYA HAR SAI AN YI LOGIN) -->
+    <div id="main-app" class="hidden">
+        
+        <!-- SIDE MENU MODAL -->
+        <div id="side-menu" class="fixed inset-0 bg-black/70 z-50 hidden opacity-0 transition-opacity duration-300">
+            <div class="w-72 h-full card-bg p-5 space-y-6 transform -translate-x-full transition-transform duration-300" id="menu-content">
+                <div class="flex justify-between items-center border-b border-purple-900 pb-3">
+                    <h3 class="font-bold text-purple-400">🔥 FEATURES</h3>
+                    <button onclick="toggleMenu()" class="text-gray-400 text-xl">&times;</button>
+                </div>
+                <ul class="space-y-4 text-sm text-gray-300">
+                    <li class="flex items-center gap-3">🤖 <span>Auto reply in Groups & DMs</span></li>
+                    <li class="flex items-center gap-3">⏱️ <span>Smart delay (S / M / H)</span></li>
+                    <li class="flex items-center gap-3">🧠 <span>Real human-like behavior</span></li>
+                    <li class="flex items-center gap-3">🛡️ <span>Anti-flood & safe mode</span></li>
+                    <li class="flex items-center gap-3">📊 <span>Statistics & analytics</span></li>
+                </ul>
             </div>
         </div>
-    </div>
 
-    <div id="tab-targets" class="tab-content hidden space-y-4">
-        <h2 class="text-sm font-bold text-gray-400">Manage Your Groups</h2>
-        <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 space-y-3">
-            <input type="text" id="group-name" placeholder="e.g., bitgeters2" class="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
-            <input type="number" id="group-delay" placeholder="Delay in seconds (e.g., 15)" class="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
-            <button class="w-full py-3 bg-blue-600 rounded-xl font-bold text-sm active:scale-95 transition-transform">Add Target Group</button>
+        <!-- PREMIUM PLAN POP-UP MODAL -->
+        <div id="premium-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 hidden">
+            <div class="w-full max-w-sm card-bg p-6 rounded-2xl space-y-4 relative">
+                <button onclick="togglePremiumModal()" class="absolute top-3 right-4 text-gray-400 text-2xl">&times;</button>
+                <h3 class="text-center font-bold text-xl text-purple-400">👑 Upgrade Plan</h3>
+                <p class="text-xs text-gray-400 text-center">Select your preferred duration extension</p>
+                <div class="space-y-2">
+                    <button class="w-full p-3 bg-purple-900/40 border border-purple-700/50 rounded-xl flex justify-between text-sm font-bold hover:bg-purple-900/60">
+                        <span>1 Week Access</span><span class="text-green-400">$10</span>
+                    </button>
+                    <button class="w-full p-3 bg-purple-900/40 border border-purple-700/50 rounded-xl flex justify-between text-sm font-bold hover:bg-purple-900/60">
+                        <span>2 Weeks Access</span><span class="text-green-400">$20</span>
+                    </button>
+                    <button class="w-full p-3 bg-purple-600 rounded-xl flex justify-between text-sm font-bold text-black active:scale-95 transition-transform">
+                        <span>1 Month Access</span><span class="font-extrabold">$30</span>
+                    </button>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <div id="tab-account" class="tab-content hidden space-y-4">
-        <h2 class="text-sm font-bold text-gray-400">Connect Telegram Account</h2>
-        <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 space-y-3">
-            <input type="number" placeholder="Telegram API ID" class="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
-            <input type="text" placeholder="Telegram API Hash" class="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
-            <input type="text" placeholder="Phone Number (+234...)" class="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
-            <button class="w-full py-3 bg-green-600 rounded-xl font-bold text-sm active:scale-95 transition-transform">Request OTP</button>
+        <!-- HEADER BLOCK -->
+        <div class="flex justify-between items-center mb-6">
+            <button onclick="toggleMenu()" class="text-gray-400 p-1">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <div class="flex items-center gap-1.5">
+                <div class="bg-purple-600 w-3 h-3 rounded-full animate-pulse"></div>
+                <span class="text-sm font-bold tracking-wider text-purple-400">Seren Chat</span>
+            </div>
+            <div class="w-6"></div>
         </div>
-    </div>
 
-    <div class="fixed bottom-0 left-0 right-0 bg-gray-950 border-t border-gray-850 p-3 flex justify-around text-center text-xs text-gray-400 z-50">
-        <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-active flex flex-col items-center gap-1"><span>📊</span><span>Dashboard</span></button>
-        <button onclick="switchTab('targets')" id="btn-targets" class="flex flex-col items-center gap-1"><span>🎯</span><span>Targets</span></button>
-        <button onclick="switchTab('account')" id="btn-account" class="flex flex-col items-center gap-1"><span>👤</span><span>Account</span></button>
+        <!-- 1. DASHBOARD TAB -->
+        <div id="tab-dashboard" class="tab-content space-y-4">
+            <!-- Bot Status Top Card with Real Robot Aspect -->
+            <div class="purple-gradient p-5 rounded-3xl border border-purple-900/50 flex justify-between items-center relative overflow-hidden">
+                <div class="space-y-1 z-10">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold tracking-wide">Bot Status</span>
+                        <span class="bg-green-500/20 text-green-400 text-[10px] font-extrabold px-2 py-0.5 rounded-full">ON</span>
+                    </div>
+                    <p class="text-xs text-purple-300">Seren is running smoothly</p>
+                </div>
+                <!-- Mini Avatar Purple Robot Graphics style -->
+                <div class="w-16 h-16 rounded-full bg-purple-950/80 border border-purple-500/30 flex items-center justify-center overflow-hidden">
+                    <div class="w-10 h-8 bg-purple-600 rounded-xl flex items-center justify-center gap-1 relative">
+                        <div class="absolute -top-1.5 w-1.5 h-2 bg-purple-400 rounded-full"></div>
+                        <span class="w-2 h-2 bg-cyan-300 rounded-full animate-pulse"></span>
+                        <span class="w-2 h-2 bg-cyan-300 rounded-full animate-pulse"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Status Grid -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="card-bg p-4 rounded-2xl flex items-center gap-3">
+                    <div class="p-2 bg-green-500/10 rounded-xl text-green-400">⚙️</div>
+                    <div>
+                        <p class="text-[10px] text-gray-400">Mode</p>
+                        <p class="text-xs font-bold">Groups Only</p>
+                    </div>
+                </div>
+                <div class="card-bg p-4 rounded-2xl flex items-center gap-3">
+                    <div class="p-2 bg-purple-500/10 rounded-xl text-purple-400">🎯</div>
+                    <div>
+                        <p class="text-[10px] text-gray-400">Active Targets</p>
+                        <p class="text-xs font-bold">4 Groups</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Block -->
+            <div class="space-y-2">
+                <h3 class="text-xs font-bold text-gray-400 tracking-wide">Statistics (Today)</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="card-bg p-4 rounded-2xl space-y-1">
+                        <p class="text-xs text-gray-400">Replies Today</p>
+                        <p class="text-2xl font-black text-purple-400">128</p>
+                    </div>
+                    <div class="card-bg p-4 rounded-2xl space-y-1">
+                        <p class="text-xs text-gray-400">Replies This Week</p>
+                        <p class="text-2xl font-black text-purple-400">794</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="card-bg p-4 rounded-2xl space-y-1">
+                        <p class="text-xs text-gray-400">Total Replies</p>
+                        <p class="text-xl font-bold">18,420</p>
+                    </div>
+                    <div class="card-bg p-4 rounded-2xl space-y-1">
+                        <p class="text-xs text-gray-400">Active Accounts</p>
+                        <p class="text-xl font-bold">1</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Validity Card -->
+            <div class="card-bg p-4 rounded-2xl space-y-2">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-amber-400 font-bold flex items-center gap-1">👑 1 Month Plan</span>
+                    <span class="text-gray-400 font-medium">23 Days Left</span>
+                </div>
+                <div class="w-full bg-purple-950 h-1.5 rounded-full overflow-hidden">
+                    <div class="bg-gradient-to-r from-purple-600 to-pink-500 h-full rounded-full" style="width: 74%"></div>
+                </div>
+            </div>
+
+            <!-- Announcement Card -->
+            <div class="card-bg p-4 rounded-2xl flex justify-between items-center">
+                <div class="space-y-0.5">
+                    <p class="text-[10px] text-gray-400">Latest Announcement</p>
+                    <p class="text-xs font-semibold text-purple-200">Zamui je maintenance nasati 1</p>
+                </div>
+                <span class="text-[10px] text-gray-500">June 27</span>
+            </div>
+        </div>
+
+        <!-- 2. TARGETS TAB -->
+        <div id="tab-targets" class="tab-content hidden space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-sm font-bold text-gray-400 tracking-wide">Targets Management</h2>
+                <span class="text-xs bg-purple-900/50 text-purple-300 px-3 py-1 rounded-full font-bold">Groups (4)</span>
+            </div>
+
+            <!-- Inputs Box -->
+            <div class="card-bg p-4 rounded-2xl space-y-3">
+                <input type="text" id="target-username" placeholder="@username (e.g., bitgeters2)" class="w-full p-3 bg-purple-950/40 rounded-xl border border-purple-900/50 text-xs focus:outline-none focus:border-purple-500">
+                <input type="number" id="target-delay" placeholder="Delay in seconds (e.g., 20)" class="w-full p-3 bg-purple-950/40 rounded-xl border border-purple-900/50 text-xs focus:outline-none focus:border-purple-500">
+                <button class="w-full py-3 bg-purple-600 rounded-xl font-bold text-xs text-black active:scale-95 transition-transform shadow-lg shadow-purple-600/20">+ Add Target</button>
+            </div>
+
+            <!-- Active List -->
+            <div class="space-y-2">
+                <div class="card-bg p-4 rounded-2xl flex justify-between items-center">
+                    <div>
+                        <p class="text-xs font-bold text-green-400">🟢 @bitgeters2</p>
+                        <p class="text-[10px] text-gray-400 mt-0.5">Delay: 30 S | Expires in: 3 Days</p>
+                    </div>
+                    <input type="checkbox" checked class="w-4 h-4 accent-purple-500">
+                </div>
+                <div class="card-bg p-4 rounded-2xl flex justify-between items-center">
+                    <div>
+                        <p class="text-xs font-bold text-green-400">🟢 @africaalpha</p>
+                        <p class="text-[10px] text-gray-400 mt-0.5">Delay: 5 M | Expires in: 5 Days</p>
+                    </div>
+                    <input type="checkbox" checked class="w-4 h-4 accent-purple-500">
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. ACCOUNT TAB -->
+        <div id="tab-account" class="tab-content hidden space-y-4">
+            <div class="card-bg p-5 rounded-2xl text-center space-y-2 relative">
+                <div class="w-14 h-14 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-full mx-auto flex items-center justify-center font-black text-lg">U</div>
+                <div>
+                    <p class="text-sm font-bold">User Account</p>
+                    <p class="text-[10px] text-gray-400">Session Linked ✔</p>
+                </div>
+            </div>
+
+            <div class="card-bg p-4 rounded-2xl flex justify-between items-center">
+                <div class="space-y-1">
+                    <p class="text-xs text-gray-400">Current Plan</p>
+                    <p class="text-sm font-bold text-amber-400">1 Month Plan</p>
+                </div>
+                <button onclick="togglePremiumModal()" class="px-4 py-2 bg-purple-600 text-black font-bold text-xs rounded-xl active:scale-95 transition-transform">Upgrade Plan</button>
+            </div>
+
+            <div class="card-bg p-4 rounded-2xl space-y-1">
+                <p class="text-xs font-bold text-purple-400">Help & Support</p>
+                <p class="text-[10px] text-gray-400">For issues or payments inquiries, email us at:</p>
+                <p class="text-xs text-pink-400 font-semibold select-all">chatseren@gmail.com</p>
+            </div>
+        </div>
+
+        <!-- NAVIGATION NAVIGATION BAR -->
+        <div class="fixed bottom-0 left-0 right-0 bg-[#0A0915] border-t border-purple-950/60 p-3.5 flex justify-around text-center text-[10px] text-gray-500 z-40">
+            <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-active flex flex-col items-center gap-1">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h1v7c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-7h1a1 1 0 0 0 .7-1.7L12.7 3.3a1 1 0 0 0-1.4 0L2.3 11.3a1 1 0 0 0 .7 1.7zm9-7.5 5 4.5V20H7v-9.7l5-4.5z"/></svg>
+                <span>Dashboard</span>
+            </button>
+            <button onclick="switchTab('targets')" id="btn-targets" class="flex flex-col items-center gap-1">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm0-13c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5z"/></svg>
+                <span>Targets</span>
+            </button>
+            <button onclick="switchTab('account')" id="btn-account" class="flex flex-col items-center gap-1">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.2 0 4-1.8 4-4s-1.8-4-4-4-4 1.8-4 4 1.8 4 4 4zm0 2c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5-3-8-3z"/></svg>
+                <span>Account</span>
+            </button>
+        </div>
     </div>
 
     <script>
+        // Check idan user ya riga ya yi rajista a baya (Local Storage)
+        window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('seren_registered') === 'true') {
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+            }
+        });
+
+        function handleRegistration() {
+            const apiId = document.getElementById('reg-api-id').value;
+            const apiHash = document.getElementById('reg-api-hash').value;
+            const code = document.getElementById('reg-country-code').value;
+            const phone = document.getElementById('reg-phone').value;
+
+            if(!apiId || !apiHash || !phone) {
+                alert('Don Allah cike duka guraren!');
+                return;
+            }
+
+            // Ajiye cewa an yi login don kada ya sake fitowa
+            localStorage.setItem('seren_registered', 'true');
+            
+            // Boye Register Screen, nuna babban shafi
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+        }
+
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById('tab-' + tabId).classList.remove('hidden');
             document.querySelectorAll('[id^="btn-"]').forEach(el => el.classList.remove('nav-active'));
             document.getElementById('btn-' + tabId).classList.add('nav-active');
         }
+
+        function toggleMenu() {
+            const menu = document.getElementById('side-menu');
+            const content = document.getElementById('menu-content');
+            if(menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                setTimeout(() => { menu.classList.remove('opacity-0'); content.classList.remove('-translate-x-full'); }, 50);
+            } else {
+                menu.classList.add('opacity-0'); content.classList.add('-translate-x-full');
+                setTimeout(() => menu.classList.add('hidden'), 300);
+            }
+        }
+
+        function togglePremiumModal() {
+            const modal = document.getElementById('premium-modal');
+            modal.classList.toggle('hidden');
+        }
+
         window.Telegram.WebApp.ready();
     </script>
 </body>
