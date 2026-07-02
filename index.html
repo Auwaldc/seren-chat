@@ -6,9 +6,13 @@
     <title>Seren Chat</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>body { background-color: #0B0E14; color: #FFFFFF; }</style>
+    <style>
+        body { background-color: #0B0E14; color: #FFFFFF; font-family: sans-serif; }
+        .nav-active { color: #1C9BE0; font-weight: bold; }
+    </style>
 </head>
 <body class="p-4 pb-24">
+
     <div class="flex items-center gap-2 mb-6">
         <div class="bg-blue-600 px-3 py-1.5 rounded-xl text-xl font-bold">S</div>
         <div>
@@ -17,7 +21,7 @@
         </div>
     </div>
 
-    <div id="tab-dashboard" class="space-y-4">
+    <div id="tab-dashboard" class="tab-content space-y-4">
         <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 flex justify-between items-center">
             <div>
                 <p class="text-sm font-semibold">Bot Engine Status</p>
@@ -36,6 +40,39 @@
         </div>
     </div>
 
-    <script>window.Telegram.WebApp.ready();</script>
+    <div id="tab-targets" class="tab-content hidden space-y-4">
+        <h2 class="text-sm font-bold text-gray-400">Manage Your Groups</h2>
+        <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 space-y-3">
+            <input type="text" id="group-name" placeholder="e.g., bitgeters2" class="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
+            <input type="number" id="group-delay" placeholder="Delay in seconds (e.g., 15)" class="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
+            <button class="w-full py-3 bg-blue-600 rounded-xl font-bold text-sm active:scale-95 transition-transform">Add Target Group</button>
+        </div>
+    </div>
+
+    <div id="tab-account" class="tab-content hidden space-y-4">
+        <h2 class="text-sm font-bold text-gray-400">Connect Telegram Account</h2>
+        <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 space-y-3">
+            <input type="number" placeholder="Telegram API ID" class="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
+            <input type="text" placeholder="Telegram API Hash" class="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
+            <input type="text" placeholder="Phone Number (+234...)" class="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
+            <button class="w-full py-3 bg-green-600 rounded-xl font-bold text-sm active:scale-95 transition-transform">Request OTP</button>
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 left-0 right-0 bg-gray-950 border-t border-gray-850 p-3 flex justify-around text-center text-xs text-gray-400 z-50">
+        <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-active flex flex-col items-center gap-1"><span>📊</span><span>Dashboard</span></button>
+        <button onclick="switchTab('targets')" id="btn-targets" class="flex flex-col items-center gap-1"><span>🎯</span><span>Targets</span></button>
+        <button onclick="switchTab('account')" id="btn-account" class="flex flex-col items-center gap-1"><span>👤</span><span>Account</span></button>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            document.querySelectorAll('[id^="btn-"]').forEach(el => el.classList.remove('nav-active'));
+            document.getElementById('btn-' + tabId).classList.add('nav-active');
+        }
+        window.Telegram.WebApp.ready();
+    </script>
 </body>
 </html>
