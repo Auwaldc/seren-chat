@@ -81,3 +81,123 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0",port=5000,debug=True)
+    # ==========================
+# TELEGRAM LOGIN APIs
+# ==========================
+
+clients = {}
+
+@app.route("/send_code", methods=["POST"])
+def send_code():
+
+    data = request.get_json()
+
+    api_id = int(data["api_id"])
+    api_hash = data["api_hash"]
+    phone = data["phone"]
+
+    try:
+
+        client = TelegramClient(
+            StringSession(),
+            api_id,
+            api_hash
+        )
+
+        client.connect()
+
+        client.send_code_request(phone)
+
+        clients[phone] = client
+
+        return jsonify({
+            "success": True,
+            "message": "Verification code sent."
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        })
+
+
+@app.route("/verify_code", methods=["POST"])
+def verify_code():
+
+    data = request.get_json()
+
+    phone = data["phone"]
+    code = data["code"]
+
+    try:
+
+        client = clients[phone]
+
+        client.sign_in(phone, code)
+
+        me = client.get_me()
+
+        session_string = client.session.save()
+
+        conn = db()
+
+        c = conn.cursor()
+
+        c.execute(
+            """
+            INSERT INTO users(
+            telegram_id,
+            username,
+            phone,
+            session
+            )
+            VALUES(?,?,?,?)
+            """,
+            (
+                str(me.id),
+                me.username,
+                phone,
+                session_string
+            )
+        )
+
+        conn.commit()
+
+        conn.close()
+
+        return jsonify({
+
+            "success": True,
+            "username": me.username,
+            "telegram_id": me.id
+
+        })
+
+    except SessionPasswordNeededError:
+
+        return jsonify({
+
+            "success": False,
+            "need_2fa": True
+
+        })
+
+    except PhoneCodeInvalidError:
+
+        return jsonify({
+
+            "success": False,
+            "message": "Invalid verification code."
+
+        })
+
+    except Exception as e:
+
+        return jsonify({
+
+            "success": False,
+            "message": str(e)
+
+        })
