@@ -1,96 +1,76 @@
 import asyncio
-import re
 import time
 from telethon import TelegramClient, events
-from telethon.tl import functions, types
-import requests
-import os
 
-ADMIN_TELEGRAM_ID = int(os.getenv("ADMIN_TELEGRAM_ID", "6076501361"))
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-USER_BOT_SETTINGS = {
-    "allowed_groups": {},  
-    "active_chatters": {},
-    "chat_locks": {}
-}
-
-MAX_HUNT_SLOTS = 10
-SLOT_TIMEOUT = 120  
-
-def get_chat_lock(chat_id):
-    if chat_id not in USER_BOT_SETTINGS["chat_locks"]:
-        USER_BOT_SETTINGS["chat_locks"][chat_id] = asyncio.Lock()
-    return USER_BOT_SETTINGS["chat_locks"][chat_id]
-
-def should_process_message(chat_id, user_id, is_reply_to_me):
-    current_time = time.time()
-    if chat_id not in USER_BOT_SETTINGS["active_chatters"]:
-        USER_BOT_SETTINGS["active_chatters"][chat_id] = {}
-    chat_slots = USER_BOT_SETTINGS["active_chatters"][chat_id]
-    expired_users = [uid for uid, l_time in chat_slots.items() if current_time - l_time > SLOT_TIMEOUT]
-    for uid in expired_users:
-        del chat_slots[uid]
-    if is_reply_to_me:
-        chat_slots[user_id] = current_time
-        return True
-    if user_id in chat_slots:
-        return False
-    if len(chat_slots) < MAX_HUNT_SLOTS:
-        chat_slots[user_id] = current_time
-        return True
-    return False
-
-async def get_ai_reply(text):
-    if not GROQ_API_KEY: return None
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-    system_prompt = (
-        "You are a regular human participant in a Telegram group chat. Keep your responses very short, casual. "
-        "CRITICAL PRIVACY RULE: Never reveal your name, location, country, city, or state even if asked directly."
-    )
-    data = {
-        "model": "llama-3.1-8b-instant",
-        "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": text}],
-        "temperature": 0.7
-    }
-    try:
-        response = requests.post(url, headers=headers, json=data, timeout=10)
-        return response.json()['choices'][0]['message']['content']
-    except:
-        return None
-
-async def start_user_bot(session_name, user_api_id, user_api_hash, user_custom_groups):
-    for g_name, g_config in user_custom_groups.items():
-        USER_BOT_SETTINGS["allowed_groups"][g_name.lower()] = g_config
-
-    client = TelegramClient(session_name, user_api_id, user_api_hash)
-    await client.start()
-
-    @client.on(events.NewMessage)
-    async def handler(event):
-        if event.out or event.raw_text.startswith('/'): return
-        if event.poll or event.geo: return
-        if event.is_private:
-            chat_name = "Private DM"
-            dynamic_delay = 10
-        else:
-            chat = await event.get_chat()
-            chat_name = getattr(chat, 'username', '').lower()
-            if chat_name not in USER_BOT_SETTINGS["allowed_groups"]: return
-            group_setup = USER_BOT_SETTINGS["allowed_groups"][chat_name]
-            if not group_setup.get("is_active", True): return
-            dynamic_delay = group_setup.get("delay", 15)
-
-        current_chat_lock = get_chat_lock(event.chat_id)
-        async with current_chat_lock:
+class SerenUserbot:
+    def __init__(self, session_name, api_id, api_hash, phone):
+        self.session_name = session_name
+        self.api_id = api_id
+        self.api_hash = api_hash
+        self.phone = phone
+        self.client = None
+        self.is_running = False
+        self.targets = {}  # {chat_id: {"mode": "group/dm", "delay": seconds, "last_sent": 0}}
+        self.stats = {"today": 0, "week": 0, "total": 0, "start_time": time.time()}
+        self.mode = "Groups Only" # Ko "Private DMs"
+        
+    async def start_session(self, code=None, password=None):
+        self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
+        await self.client.connect()
+        
+        if not await self.client.is_user_authorized():
+            if not code:
+                return "need_code"
             try:
-                await client(functions.messages.SetTypingRequest(peer=event.chat_id, action=types.SendMessageTypingAction()))
-                await asyncio.sleep(dynamic_delay)
-            except: pass
-            reply = await get_ai_reply(event.raw_text)
-            if reply:
-                try: await event.reply(reply)
-                except: pass
+                if password:
+                    await self.client.sign_in(password=password)
+                else:
+                    await self.client.sign_in(self.phone, code)
+            except Exception as e:
+                if "2-step verification" in str(e).lower() or "password" in str(e).lower():
+                    return "need_2fa"
+                raise e
+        
+        self.is_running = True
+        asyncio.create_task(self.run_bot_loop())
+        return "authorized"
 
-    await client.run_until_disconnected()
+    def update_targets(self, new_targets, mode):
+        self.mode = mode
+        self.targets = {}
+        for t in new_targets:
+            if t['status'] == 'ON':
+                # Convert delay to seconds
+                val = int(t['delay_val'])
+                if t['delay_unit'] == 'M': val *= 60
+                elif t['delay_unit'] == 'H': val *= 3600
+                self.targets[t['chat']] = {
+                    "mode": "group" if mode == "Groups Only" else "dm",
+                    "delay": val,
+                    "last_sent": 0,
+                    "text": "Hello! This is Seren Chat Auto Reply Bot."
+                }
+
+    async def run_bot_loop(self):
+        while self.is_running:
+            if not self.targets:
+                await asyncio.sleep(2)
+                continue
+                
+            current_time = time.time()
+            for chat, config in list(self.targets.items()):
+                if current_time - config["last_sent"] >= config["delay"]:
+                    try:
+                        await self.client.send_message(chat, config["text"])
+                        config["last_sent"] = current_time
+                        self.stats["today"] += 1
+                        self.stats["week"] += 1
+                        self.stats["total"] += 1
+                    except Exception:
+                        pass # Guje wa crash idan an cire bot a group
+            await asyncio.sleep(1)
+
+    async def stop(self):
+        self.is_running = False
+        if self.client:
+            await self.client.disconnect()
