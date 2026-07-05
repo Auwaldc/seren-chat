@@ -1,268 +1,100 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <title>Seren Chat</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seren Chat Mini App</title>
-    <style>
-        :root {
-            --bg-color: #0d0c1d;
-            --card-bg: #16152b;
-            --accent-purple: #7b2cbf;
-            --text-color: #ffffff;
-            --text-muted: #8b8ba7;
-            --green-glow: #00f5d4;
-        }
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0; padding: 0;
-            display: flex; flex-direction: column; height: 100vh;
-        }
-        .header {
-            padding: 15px; display: flex; justify-content: space-between; align-items: center;
-            background: var(--card-bg); border-bottom: 1px solid #242247;
-        }
-        .bell-icon { position: relative; cursor: pointer; font-size: 20px; }
-        .red-dot {
-            position: absolute; top: -2px; right: -2px;
-            width: 8px; height: 8px; background: red; border-radius: 50%;
-        }
-        .content-area { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 80px; }
-        .card {
-            background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 15px;
-            border: 1px solid #242247;
-        }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .toggle-btn {
-            background: var(--accent-purple); color: white; border: none;
-            padding: 10px; border-radius: 8px; cursor: pointer; width: 100%;
-        }
-        .nav-bar {
-            position: fixed; bottom: 0; width: 100%; background: var(--card-bg);
-            display: flex; justify-content: space-around; padding: 12px 0;
-            border-top: 1px solid #242247;
-        }
-        .nav-item { color: var(--text-muted); cursor: pointer; text-align: center; font-size: 12px; }
-        .nav-item.active { color: var(--accent-purple); font-weight: bold; }
-        
-        /* Animation Section a kasan Dashboard */
-        .animation-box {
-            height: 80px; display: flex; justify-content: center; align-items: center;
-            background: linear-gradient(45deg, #16152b, #242247); border-radius: 12px;
-        }
-        .wave {
-            width: 4px; height: 30px; background: var(--accent-purple); margin: 0 3px;
-            animation: wave-anim 1.2s infinite ease-in-out;
-        }
-        .wave:nth-child(2) { animation-delay: -1.1s; }
-        .wave:nth-child(3) { animation-delay: -1.0s; }
-        @keyframes wave-anim {
-            0%, 40%, 100% { transform: scaleY(0.4); }  
-            20% { transform: scaleY(1.0); var(--green-glow); }
-        }
-        
-        /* Target Cards styling */
-        .target-card { display: flex; justify-content: space-between; align-items: center; }
-        .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #ccc; transition: .4s; border-radius: 34px;
-        }
-        .slider:before {
-            position: absolute; content: ""; height: 14px; width: 14px; left: 4px; bottom: 4px;
-            background-color: white; transition: .4s; border-radius: 50%;
-        }
-        input:checked + .slider { background-color: var(--accent-purple); }
-        input:checked + .slider:before { transform: translateX(18px); }
-        
-        .hidden { display: none !important; }
-        .blue-tick { color: #00b4d8; margin-left: 5px; }
-    </style>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-
-    <!-- Header Section -->
-    <div class="header">
-        <h2 style="margin:0; font-size: 18px;">Seren Chat</h2>
-        <div class="bell-icon" onclick="openNotifications()">
-            🔔 <div class="red-dot" id="bellBadge"></div>
-        </div>
-    </div>
-
-    <!-- Content Area -->
-    <div class="content-area">
+<body class="bg-[#0B0F] text-white">
+    <div id="app"></div>
+    
+    <script type="module">
+        import { h, render } from 'https://esm.sh/preact';
+        import { useState, useEffect } from 'https://esm.sh/preact/hooks';
+        import htm from 'https://esm.sh/htm';
+        const html = htm.bind(h);
         
-        <!-- PAGE 1: DASHBOARD -->
-        <div id="page-dashboard">
-            <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <h3 style="margin:0;">Bot Status</h3>
-                    <p style="margin:5px 0 0 0; color:var(--text-muted); font-size:12px;">Seren is running smoothly</p>
-                </div>
-                <span style="background:#10b981; padding:4px 10px; border-radius:20px; font-size:12px;">ON</span>
-            </div>
+        const tg = window.Telegram.WebApp;
+        tg.ready(); tg.expand();
+        
+        function App() {
+            const [tab, setTab] = useState('dashboard');
+            const [data, setData] = useState(null);
+            const user = tg.initDataUnsafe?.user;
             
-            <div class="card">
-                <button class="toggle-btn" id="modeToggle" onclick="toggleMode()">Mode: Groups Only</button>
-            </div>
-
-            <div class="stats-grid">
-                <div class="card" onclick="alert('Viewing targets')">
-                    <span style="font-size:12px; color:var(--text-muted);">Active Targets</span>
-                    <h2 id="dashTargets">4 Groups</h2>
-                </div>
-                <div class="card" onclick="alert('Viewing today replies logs')">
-                    <span style="font-size:12px; color:var(--text-muted);">Replies Today</span>
-                    <h2 id="dashToday">128</h2>
-                </div>
-                <div class="card" onclick="alert('Opening week performance chart')">
-                    <span style="font-size:12px; color:var(--text-muted);">Replies This Week</span>
-                    <h2>794</h2>
-                </div>
-                <div class="card" onclick="alert('Opening total performance chart')">
-                    <span style="font-size:12px; color:var(--text-muted);">Total Active Time</span>
-                    <h2>48h 12m</h2>
-                </div>
-            </div>
-
-            <div class="card">
-                <div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:8px;">
-                    <span>Subscription (1 Month Plan)</span>
-                    <span style="color:#fbbf24;">23 Days Left</span>
-                </div>
-                <div style="background:#242247; height:6px; border-radius:3px; overflow:hidden;">
-                    <div style="background:var(--accent-purple); width:70%; height:100%;"></div>
-                </div>
-            </div>
-
-            <!-- Beautiful Animation Space a kasan Dashboard -->
-            <div class="animation-box">
-                <div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div>
-            </div>
-        </div>
-
-        <!-- PAGE 2: TARGETS -->
-        <div id="page-targets" class="hidden">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h3 style="margin:0;">Manage Targets</h3>
-                <button class="toggle-btn" style="width:auto; padding:6px 12px;" onclick="addNewTarget()">+ Add Target</button>
-            </div>
-            <div id="targetsList">
-                <!-- Target Items zasu fito anan ta JavaScript -->
-            </div>
-        </div>
-
-        <!-- PAGE 3: ACCOUNT -->
-        <div id="page-account" class="hidden">
-            <div class="card" style="display:flex; align-items:center;">
-                <div style="width:45px; height:45px; background:var(--accent-purple); border-radius:50%; margin-right:12px;"></div>
-                <div>
-                    <h3 style="margin:0;" id="accUsername">@somethingdc <span class="blue-tick" id="blueTick">✓</span></h3>
-                    <span style="font-size:12px; color:var(--text-muted);">User ID: 123456789</span>
-                </div>
-            </div>
-
-            <div class="card">
-                <h4 style="margin:0 0 10px 0;">Subscription Timeline</h4>
-                <p style="margin:2px 0; font-size:13px; color:var(--text-muted);">Start Date: June 24, 2026</p>
-                <p style="margin:2px 0; font-size:13px; color:var(--text-muted);">End Date: July 24, 2026</p>
-                <button class="toggle-btn" style="margin-top:10px;" onclick="openUpgradeModal()">Upgrade Plan</button>
-            </div>
-
-            <div class="card">
-                <h4 style="margin:0 0 5px 0;">Free Trial</h4>
-                <p style="margin:0; font-size:12px; color:var(--text-muted);">Next Trial Available: in 5 Days</p>
-                <p style="margin:5px 0 0 0; font-size:11px; color:var(--accent-purple);">Get 5 minutes free every 7 days.</p>
-            </div>
-
-            <div class="card" onclick="window.open('https://t.me/dex_xyz', '_blank')" style="cursor:pointer; display:flex; justify-content:space-between;">
-                <span>Help & Support (Telegram Group)</span>
-                <span>➔</span>
-            </div>
-        </div>
-
-        <!-- PAGE 4: ADMIN DASHBOARD (Kai kadai kake gani) -->
-        <div id="page-admin" class="hidden">
-            <h3>Admin System Control</h3>
-            <div class="stats-grid" style="margin-bottom:15px;">
-                <div class="card"><h5>Total Users</h5><h2>1,482</h2></div>
-                <div class="card"><h5>Active Premium</h5><h2>342</h2></div>
-            </div>
+            useEffect(() => {
+                fetch(`https://api.ka.com/api/dashboard/${user.id}`)
+                 .then(r => r.json()).then(setData);
+            }, [tab]);
             
-            <h4>Pending Approvals</h4>
-            <div id="adminPendingList">
-                <div class="card" style="font-size:13px;">
-                    <p><b>User:</b> User123 | <b>Plan:</b> 1 Week (\$10)</p>
-                    <p><b>TxID:</b> <a href="https://tonviewer.com" target="_blank" style="color:var(--green-glow);">0x7a...8b9f</a></p>
-                    <div style="display:flex; gap:10px; margin-top:8px;">
-                        <button class="toggle-btn" style="background:#10b981; padding:5px;" onclick="alert('Approved!')">Accept</button>
-                        <button class="toggle-btn" style="background:#ef4444; padding:5px;" onclick="alert('Rejected!')">Reject</button>
+            if (!data) return html`<div class="p-4">Loading...</div>`;
+            
+            return html`
+            <div class="p-4 pb-20">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-xl font-bold">Seren Chat</h1>
+                    <div class="relative">🔔<span class="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full px-1">3</span></div>
+                </div>
+                
+                ${tab === 'dashboard' && html`
+                <div class="bg-gradient-to-r from-purple-900 to-indigo-900 p-4 rounded-2xl mb-4">
+                    <div class="flex justify-between">
+                        <div>
+                            <p class="text-sm">Bot Status</p>
+                            <p class="text-2xl font-bold text-green-400">${data.bot_status}</p>
+                            <p class="text-xs text-gray-300">Seren is running smoothly</p>
+                        </div>
+                        <img src="robot.png" class="w-16 h-16" />
                     </div>
                 </div>
+                
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-[#1A22] p-3 rounded-xl">
+                        <p class="text-xs text-gray-400">Mode</p>
+                        <p class="font-bold">Groups Only</p>
+                    </div>
+                    <div class="bg-[#1A1A22] p-3 rounded-xl">
+                        <p class="text-xs text-gray-400">Active Targets</p>
+                        <p class="font-bold text-2xl">${data.active_targets} <span class="text-sm">Groups</span></p>
+                    </div>
+                </div>
+                
+                <p class="text-sm text-gray-400 mb-2">Statistics (Today)</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-[#1A1A22] p-3 rounded-xl">
+                        <p class="text-xs text-gray-400">Replies Today</p>
+                        <p class="font-bold text-2xl">${data.replies_today}</p>
+                    </div>
+                    <div class="bg-[#1A1A22] p-3 rounded-xl">
+                        <p class="text-xs text-gray-400">Replies This Week</p>
+                        <p class="font-bold text-2xl">${data.replies_week}</p>
+                    </div>
+                </div>
+                
+                <div class="bg-[#1A1A22] p-3 rounded-xl mt-3">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span>👑</span>
+                        <p class="text-sm">Subscription</p>
+                        <p class="ml-auto text-yellow-400 text-sm">${data.subscription_days_left} Days Left</p>
+                    </div>
+                    <p class="text-green-400 text-sm">1 Month Plan</p>
+                    <div class="w-full bg-gray-700 rounded-full h-1.5 mt-2">
+                        <div class="bg-purple-500 h-1.5 rounded-full" style="width: ${(data.subscription_days_left/30)*100}%"></div>
+                    </div>
+                </div>
+                `}
+                
+                <div class="fixed bottom-0 left-0 right-0 bg-[#1A1A22] flex justify-around py-2">
+                    <button onClick=${() => setTab('dashboard')} class=${tab==='dashboard'?'text-purple-400':''}>Dashboard</button>
+                    <button onClick=${() => setTab('targets')} class=${tab==='targets'?'text-purple-400':''}>Targets</button>
+                    <button onClick=${() => setTab('account')} class=${tab==='account'?'text-purple-400':''}>Account</button>
+                </div>
             </div>
-        </div>
-
-    </div>
-
-    <!-- Navigation Bar -->
-    <div class="nav-bar">
-        <div class="nav-item active" id="btn-dash" onclick="switchPage('dashboard')">🏠<br>Dashboard</div>
-        <div class="nav-item" id="btn-targets" onclick="switchPage('targets')">📋<br>Targets</div>
-        <div class="nav-item" id="btn-account" onclick="switchPage('account')">👤<br>Account</div>
-        <div class="nav-item hidden" id="btn-admin" onclick="switchPage('admin')">⚙️<br>Admin</div>
-    </div>
-
-    <script>
-        let currentMode = "Groups Only";
+            `;
+        }
         
-        // Duba idan kai ne Admin @Auwaldc don bude ma shafi na 4
-        const currentUser = "@somethingdc"; // Idan aka saka @Auwaldc zai bude admin panel
-        if(currentUser === "@Auwaldc") {
-            document.getElementById('btn-admin').classList.remove('hidden');
-        }
-
-        function switchPage(page) {
-            document.getElementById('page-dashboard').classList.add('hidden');
-            document.getElementById('page-targets').classList.add('hidden');
-            document.getElementById('page-account').classList.add('hidden');
-            document.getElementById('page-admin').classList.add('hidden');
-            
-            document.getElementById('btn-dash').classList.remove('active');
-            document.getElementById('btn-targets').classList.remove('active');
-            document.getElementById('btn-account').classList.remove('active');
-            document.getElementById('btn-admin').classList.remove('active');
-
-            document.getElementById('page-' + page).classList.remove('hidden');
-            document.getElementById('btn-' + page).classList.add('active');
-        }
-
-        function toggleMode() {
-            if(currentMode === "Groups Only") {
-                currentMode = "Private DMs";
-                document.getElementById('dashTargets').innerText = "1 DM";
-            } else {
-                currentMode = "Groups Only";
-                document.getElementById('dashTargets').innerText = "4 Groups";
-            }
-            document.getElementById('modeToggle').innerText = "Mode: " + currentMode;
-        }
-
-        function openNotifications() {
-            alert("Admin Notification: We are undergoing maintenance for 1 hour.");
-            document.getElementById('bellBadge').style.display = 'none';
-        }
-
-        function openUpgradeModal() {
-            let plan = prompt("Choose Plan:\n1. 1 Week (\$10)\n2. 2 Weeks (\$15)\n3. 1 Month (\$30)");
-            if(plan) {
-                alert("Send funds to TON Wallet:\nUQAd3qqKMuMi-cZlMeEmO4NkAzLsvYPsiHYmt7zBdMVTB8Hc\n\nThen provide TxID.");
-                let tx = prompt("Enter Transaction Hash (TxID):");
-                if(tx) alert("Payment Submitted. Admin is verifying your transaction within 24h.");
-            }
-        }
+        render(html`<${App} />`, document.getElementById('app'));
     </script>
 </body>
 </html>
