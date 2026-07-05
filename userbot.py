@@ -1,76 +1,58 @@
-import asyncio
-import time
+import asyncio, redis, json, os
 from telethon import TelegramClient, events
+from telethon.sessions import StringSession
+from cryptography.fernet import Fernet
+from datetime import datetime
 
-class SerenUserbot:
-    def __init__(self, session_name, api_id, api_hash, phone):
-        self.session_name = session_name
-        self.api_id = api_id
-        self.api_hash = api_hash
-        self.phone = phone
-        self.client = None
-        self.is_running = False
-        self.targets = {}  # {chat_id: {"mode": "group/dm", "delay": seconds, "last_sent": 0}}
-        self.stats = {"today": 0, "week": 0, "total": 0, "start_time": time.time()}
-        self.mode = "Groups Only" # Ko "Private DMs"
-        
-    async def start_session(self, code=None, password=None):
-        self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
-        await self.client.connect()
-        
-        if not await self.client.is_user_authorized():
-            if not code:
-                return "need_code"
-            try:
-                if password:
-                    await self.client.sign_in(password=password)
-                else:
-                    await self.client.sign_in(self.phone, code)
-            except Exception as e:
-                if "2-step verification" in str(e).lower() or "password" in str(e).lower():
-                    return "need_2fa"
-                raise e
-        
-        self.is_running = True
-        asyncio.create_task(self.run_bot_loop())
-        return "authorized"
+r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+cipher = Fernet(os.getenv("ENCRYPTION_KEY").encode())
 
-    def update_targets(self, new_targets, mode):
-        self.mode = mode
-        self.targets = {}
-        for t in new_targets:
-            if t['status'] == 'ON':
-                # Convert delay to seconds
-                val = int(t['delay_val'])
-                if t['delay_unit'] == 'M': val *= 60
-                elif t['delay_unit'] == 'H': val *= 3600
-                self.targets[t['chat']] = {
-                    "mode": "group" if mode == "Groups Only" else "dm",
-                    "delay": val,
-                    "last_sent": 0,
-                    "text": "Hello! This is Seren Chat Auto Reply Bot."
-                }
+async def run_userbot(user_id):
+    user_data = r.hgetall(f"user:{user_id}")
+    if not user_data: return
+    
+    session = cipher.decrypt(user_data["session"].encode()).decode()
+    client = TelegramClient(StringSession(session), int(os.getenv("API_ID")), os.getenv("API_HASH"))
+    await client.connect()
+    
+    r.set(f"worker:active:{user_id}", "1")
+    
+    # Load targets
+    async def load_targets():
+        targets = {}
+        for t_key in r.smembers(f"targets:{user_id}"):
+            t = r.hgetall(t_key)
+            if t["active"] == "1" and datetime.fromisoformat(t["expires_at"]) > datetime.now():
+                targets[t["link"]] = int(t["delay"])
+        return targets
+    
+    active_targets = await load_targets()
+    
+    @client.on(events.NewMessage)
+    async def handler(event):
+        chat_username = f"@{event.chat.username}" if event.chat else ""
+        if chat_username in active_targets:
+            await asyncio.sleep(active_targets[chat_username])
+            await event.reply("This is an auto-reply from Seren Chat.") # Saka sakonka anan
+            r.hincrby(f"target:{user_id}:{chat_username}", "replies_today", 1)
+    
+    # Saurari Redis don reload ko stop
+    pubsub = r.pubsub()
+    pubsub.subscribe("worker_control")
+    
+    async def redis_listener():
+        for msg in pubsub.listen():
+            if msg["type"] == "message":
+                data = json.loads(msg["data"])
+                if data["user_id"] == user_id and data["action"] == "reload":
+                    nonlocal active_targets
+                    active_targets = await load_targets()
+                if data["user_id"] == user_id and data["action"] == "stop":
+                    await client.disconnect()
+                    return
+    
+    await asyncio.gather(client.run_until_disconnected(), redis_listener())
 
-    async def run_bot_loop(self):
-        while self.is_running:
-            if not self.targets:
-                await asyncio.sleep(2)
-                continue
-                
-            current_time = time.time()
-            for chat, config in list(self.targets.items()):
-                if current_time - config["last_sent"] >= config["delay"]:
-                    try:
-                        await self.client.send_message(chat, config["text"])
-                        config["last_sent"] = current_time
-                        self.stats["today"] += 1
-                        self.stats["week"] += 1
-                        self.stats["total"] += 1
-                    except Exception:
-                        pass # Guje wa crash idan an cire bot a group
-            await asyncio.sleep(1)
-
-    async def stop(self):
-        self.is_running = False
-        if self.client:
-            await self.client.disconnect()
+if __name__ == "__main__":
+    # A production, za a yi amfani da Celery ko K8s don kunna kowane user
+    asyncio.run(run_userbot(123456789))
