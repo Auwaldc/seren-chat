@@ -1,284 +1,1014 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seren Chat</title>
-    <style>
-        :root {
-            --bg-color: #0d0c1d;
-            --card-bg: #16152b;
-            --accent-purple: #7b2cbf;
-            --text-color: #ffffff;
-            --text-muted: #8b8ba7;
-            --green-glow: #00f5d4;
-        }
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0; padding: 0;
-            display: flex; flex-direction: column; height: 100vh;
-        }
-        .header {
-            padding: 15px; display: flex; justify-content: space-between; align-items: center;
-            background: var(--card-bg); border-bottom: 1px solid #242247;
-        }
-        .bell-icon { position: relative; cursor: pointer; font-size: 20px; }
-        .red-dot {
-            position: absolute; top: -2px; right: -2px;
-            width: 8px; height: 8px; background: red; border-radius: 50%;
-        }
-        .content-area { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 80px; }
-        .card {
-            background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 15px;
-            border: 1px solid #242247;
-        }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .toggle-btn {
-            background: var(--accent-purple); color: white; border: none;
-            padding: 10px; border-radius: 8px; cursor: pointer; width: 100%;
-        }
-        .nav-bar {
-            position: fixed; bottom: 0; width: 100%; background: var(--card-bg);
-            display: flex; justify-content: space-around; padding: 12px 0;
-            border-top: 1px solid #242247;
-        }
-        .nav-item { color: var(--text-muted); cursor: pointer; text-align: center; font-size: 12px; }
-        .nav-item.active { color: var(--accent-purple); font-weight: bold; }
-        
-        .animation-box {
-            height: 80px; display: flex; justify-content: center; align-items: center;
-            background: linear-gradient(45deg, #16152b, #242247); border-radius: 12px;
-        }
-        .wave {
-            width: 4px; height: 30px; background: var(--accent-purple); margin: 0 3px;
-            animation: wave-anim 1.2s infinite ease-in-out;
-        }
-        .wave:nth-child(2) { animation-delay: -1.1s; }
-        .wave:nth-child(3) { animation-delay: -1.0s; }
-        @keyframes wave-anim {
-            0%, 40%, 100% { transform: scaleY(0.4); }  
-            20% { transform: scaleY(1.0); }
-        }
-        
-        .hidden { display: none !important; }
-        .toast {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.85); color: #fff; padding: 10px 20px;
-            border-radius: 20px; font-size: 14px; z-index: 9999;
-        }
-        .input-field {
-            width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 8px;
-            border: 1px solid #242247; background: #0d0c1d; color: #fff; box-sizing: border-box;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seren Chat — Dashboard</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --bg: #0b0a12;
+    --card: #15131f;
+    --card-2: #1b1828;
+    --purple: #7c5cff;
+    --purple-2: #5b3dd6;
+    --purple-glow: #9d7bff;
+    --text: #f2f0fa;
+    --text-dim: #9c98b4;
+    --text-faint: #6b6885;
+    --green: #3ddc84;
+    --amber: #ffb545;
+    --red: #ff5470;
+    --border: #262336;
+    --radius: 16px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background: #05050a;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    display:flex; justify-content:center;
+    padding: 24px 8px;
+  }
+  .phone{
+    width: 390px;
+    background: var(--bg);
+    border-radius: 36px;
+    border: 1px solid #1c1a28;
+    overflow: hidden;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+    color: var(--text);
+    position: relative;
+  }
+  .screen{ padding: 18px 18px 100px; min-height: 780px; position: relative;}
+  .statusbar{ display:flex; justify-content:space-between; font-size:13px; font-weight:600; color:var(--text); padding:6px 4px 14px;}
+  .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  .icon-btn{
+    width:38px; height:38px; border-radius:12px; background:var(--card-2);
+    display:flex; align-items:center; justify-content:center; border:1px solid var(--border);
+    cursor:pointer; position:relative; transition:.15s; flex-shrink:0;
+  }
+  .icon-btn:hover{ border-color:#3a3552; }
+  .title{ font-size:17px; font-weight:700; letter-spacing:.2px;}
+  .badge{
+    position:absolute; top:-4px; right:-4px; background:var(--red); color:white;
+    font-size:10px; font-weight:700; min-width:16px; height:16px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center; padding:0 3px;
+    border: 2px solid var(--bg); transition:.2s;
+  }
+  .badge.hidden{ opacity:0; transform:scale(0);}
+
+  .bot-card{
+    position:relative; border-radius:20px; padding:20px; margin-bottom:16px;
+    overflow:hidden;
+    background: linear-gradient(135deg, #7c5cff 0%, #5a37d8 45%, #2a1a66 100%);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06) inset, 0 18px 40px -12px rgba(124,92,255,0.55);
+  }
+  .bot-card::before{
+    content:''; position:absolute; width:220px; height:220px; border-radius:50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.25), transparent 70%);
+    top:-90px; right:-70px; filter: blur(2px);
+  }
+  .bot-card::after{
+    content:''; position:absolute; width:160px; height:160px; border-radius:50%;
+    background: radial-gradient(circle, rgba(157,123,255,0.5), transparent 70%);
+    bottom:-80px; left:-40px;
+  }
+  .bot-row{ display:flex; justify-content:space-between; align-items:flex-start; position:relative; z-index:2;}
+  .bot-info{ max-width:62%; }
+  .bot-label{ font-size:12px; color:rgba(255,255,255,0.65); font-weight:600; letter-spacing:.4px; text-transform:uppercase; margin-bottom:6px;}
+  .bot-status-row{ display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+  .bot-status-row .lbl{ font-size:19px; font-weight:700; color:#fff;}
+  .pill-on{
+    display:flex; align-items:center; gap:6px; background:rgba(61,220,132,0.18);
+    border:1px solid rgba(61,220,132,0.5); color:#7CFDB1; font-size:11px; font-weight:700;
+    padding:3px 10px; border-radius:20px;
+  }
+  .dot-pulse{ width:7px; height:7px; border-radius:50%; background:#3ddc84; box-shadow:0 0 0 0 rgba(61,220,132,0.7); animation:pulse 1.8s infinite;}
+  @keyframes pulse{
+    0%{ box-shadow:0 0 0 0 rgba(61,220,132,0.6);}
+    70%{ box-shadow:0 0 0 8px rgba(61,220,132,0);}
+    100%{ box-shadow:0 0 0 0 rgba(61,220,132,0);}
+  }
+  .bot-sub{ font-size:13px; color:rgba(255,255,255,0.75); line-height:1.4;}
+  .bot-avatar{
+    width:76px; height:76px; border-radius:22px; background: linear-gradient(160deg,#e9e3ff,#b7a4ff);
+    display:flex; align-items:center; justify-content:center; position:relative; z-index:2;
+    box-shadow: 0 12px 24px -6px rgba(0,0,0,0.4), inset 0 0 0 2px rgba(255,255,255,0.4);
+  }
+  .bot-avatar svg{ width:42px; height:42px;}
+
+  .segmented{
+    display:flex; background:var(--card); border-radius:14px; padding:4px; margin-bottom:16px;
+    border:1px solid var(--border);
+  }
+  .seg-btn{
+    flex:1; text-align:center; padding:10px 0; font-size:13px; font-weight:600; color:var(--text-dim);
+    border-radius:11px; cursor:pointer; transition:.2s; display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .seg-btn.active{ background:var(--purple); color:#fff; box-shadow:0 6px 14px -4px rgba(124,92,255,0.6);}
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;}
+  .stat-card{
+    background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px;
+    cursor:pointer; transition:.15s; position:relative;
+  }
+  .stat-card:hover{ border-color:#3a3552; transform:translateY(-1px);}
+  .stat-top{ display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+  .stat-icon{ width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center;}
+  .stat-label{ font-size:12px; color:var(--text-dim); font-weight:500;}
+  .stat-value{ font-size:22px; font-weight:700; color:var(--text);}
+  .stat-value .unit{ font-size:12px; color:var(--text-dim); font-weight:500; margin-left:2px;}
+
+  .section-title{ font-size:13px; font-weight:700; color:var(--text-dim); letter-spacing:.4px; text-transform:uppercase; margin: 6px 0 10px;}
+
+  .sub-card{
+    background:var(--card); border:1px solid var(--border); border-radius:18px; padding:16px; margin-bottom:16px;
+  }
+  .sub-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .sub-plan{ display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; color:var(--green);}
+  .sub-days{ font-size:13px; font-weight:700; color:var(--amber);}
+  .progress{ height:8px; background:#2a2740; border-radius:6px; overflow:hidden; margin-bottom:14px;}
+  .progress-fill{ height:100%; background:linear-gradient(90deg,var(--purple),var(--purple-glow)); border-radius:6px;}
+  .plans{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
+  .plan-btn{
+    background:var(--card-2); border:1px solid var(--border); border-radius:12px; padding:10px 4px;
+    text-align:center; cursor:pointer; transition:.15s;
+  }
+  .plan-btn.selected{ border-color:var(--purple); background:rgba(124,92,255,0.12);}
+  .plan-name{ font-size:11px; color:var(--text-dim); margin-bottom:4px; font-weight:600;}
+  .plan-price{ font-size:15px; font-weight:700; color:var(--text);}
+
+  .bottomnav{
+    position:absolute; bottom:0; left:0; right:0; background:rgba(11,10,18,0.92); backdrop-filter:blur(10px);
+    border-top:1px solid var(--border); display:flex; padding:12px 8px 18px;
+  }
+  .nav-item{ flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; color:var(--text-faint); font-size:11px; font-weight:600;}
+  .nav-item.active{ color:var(--purple-glow);}
+  .nav-item svg{ width:22px; height:22px;}
+
+  .overlay{
+    position:absolute; inset:0; background:rgba(4,4,10,0.75); display:none; align-items:flex-end; z-index:50; border-radius:36px;
+  }
+  .overlay.show{ display:flex; }
+  .panel{
+    background:var(--card); width:100%; border-radius:24px 24px 0 0; padding:18px 18px 28px; max-height:85%; overflow-y:auto;
+    border-top:1px solid var(--border); animation: slideup .22s ease-out;
+  }
+  @keyframes slideup{ from{ transform:translateY(40px); opacity:0;} to{ transform:translateY(0); opacity:1;} }
+  .panel-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
+  .panel-title{ font-size:16px; font-weight:700;}
+  .close-x{ width:30px; height:30px; border-radius:9px; background:var(--card-2); display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:16px; flex-shrink:0;}
+
+  .list-row{ display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--border);}
+  .list-row:last-child{ border-bottom:none;}
+  .list-left{ display:flex; align-items:center; gap:10px;}
+  .avatar-sm{ width:36px; height:36px; border-radius:10px; background:var(--card-2); display:flex; align-items:center; justify-content:center; color:var(--purple-glow); font-weight:700; font-size:13px;}
+  .row-name{ font-size:14px; font-weight:600;}
+  .row-sub{ font-size:12px; color:var(--text-dim);}
+
+  .reply-item{ padding:12px 0; border-bottom:1px solid var(--border);}
+  .reply-item:last-child{ border-bottom:none;}
+  .reply-meta{ display:flex; justify-content:space-between; margin-bottom:4px;}
+  .reply-target{ font-size:12px; color:var(--purple-glow); font-weight:600;}
+  .reply-time{ font-size:11px; color:var(--text-faint);}
+  .reply-text覆{ font-size:13px; color:var(--text); line-height:1.4;}
+  .reply-text{ font-size:13px; color:var(--text); line-height:1.4;}
+
+  .empty-note{ font-size:12px; color:var(--text-faint); text-align:center; padding:24px 0;}
+
+  .chart-wrap{ height:120px; display:flex; align-items:flex-end; gap:6px; padding-top:10px;}
+  .bar{ flex:1; background:linear-gradient(180deg,var(--purple-glow),var(--purple-2)); border-radius:6px 6px 2px 2px; position:relative;}
+  .bar span{ position:absolute; top:-18px; left:0; right:0; text-align:center; font-size:10px; color:var(--text-dim);}
+  .chart-labels{ display:flex; gap:6px; margin-top:6px;}
+  .chart-labels div{ flex:1; text-align:center; font-size:10px; color:var(--text-faint);}
+
+  .toast{
+    position:absolute; top:70px; left:50%; transform:translateX(-50%) translateY(-10px); background:var(--card-2);
+    border:1px solid var(--border); padding:9px 16px; border-radius:30px; font-size:12px; font-weight:600;
+    opacity:0; transition:.25s; z-index:70; white-space:nowrap;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0);}
+
+  .targets-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; gap:10px;}
+  .header-left{ display:flex; align-items:center; gap:10px;}
+  .add-btn{
+    display:flex; align-items:center; gap:6px; background:var(--purple); color:#fff; font-size:13px; font-weight:700;
+    padding:9px 14px; border-radius:12px; cursor:pointer; border:none; white-space:nowrap;
+    box-shadow:0 6px 14px -4px rgba(124,92,255,0.6);
+  }
+  .type-tabs{ display:flex; background:var(--card); border-radius:14px; padding:4px; margin-bottom:16px; border:1px solid var(--border);}
+  .type-tab{ flex:1; text-align:center; padding:10px 0; font-size:13px; font-weight:700; color:var(--text-dim); border-radius:11px; cursor:pointer; transition:.2s;}
+  .type-tab.active{ background:var(--purple); color:#fff; box-shadow:0 6px 14px -4px rgba(124,92,255,0.6);}
+
+  .target-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px; margin-bottom:12px;}
+  .target-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+  .target-name{ display:flex; align-items:center; gap:8px; font-size:14px; font-weight:700;}
+  .status-dot{ width:8px; height:8px; border-radius:50%; background:var(--green); flex-shrink:0;}
+  .status-dot.off{ background:var(--text-faint);}
+  .target-actions{ display:flex; align-items:center; gap:10px;}
+  .switch{ position:relative; width:44px; height:26px; border-radius:14px; background:#2a2740; cursor:pointer; transition:.2s; flex-shrink:0;}
+  .switch.on{ background:var(--purple);}
+  .switch.disabled{ opacity:0.4; cursor:not-allowed;}
+  .switch-knob{ position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:.2s;}
+  .switch.on .switch-knob{ transform:translateX(18px);}
+  .kebab{ width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-dim); flex-shrink:0;}
+  .kebab:hover{ background:var(--card-2);}
+  .target-stats{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px;}
+  .tstat-label{ font-size:11px; color:var(--text-dim); margin-bottom:2px;}
+  .tstat-value{ font-size:15px; font-weight:700;}
+  .target-foot{ display:flex; align-items:center; justify-content:space-between; background:var(--card-2); border-radius:10px; padding:8px 10px; font-size:12px;}
+  .delay-tag{ display:flex; align-items:center; gap:5px; color:var(--text-dim); font-weight:600;}
+  .expires-ok{ color:var(--text-dim);}
+  .expires-bad{ color:var(--red); font-weight:700;}
+
+  .wizard-step{ display:none;}
+  .wizard-step.active{ display:block;}
+  .type-choice{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;}
+  .type-choice-btn{
+    background:var(--card-2); border:1px solid var(--border); border-radius:14px; padding:20px 10px; text-align:center;
+    cursor:pointer; transition:.15s;
+  }
+  .type-choice-btn.selected{ border-color:var(--purple); background:rgba(124,92,255,0.12);}
+  .type-choice-btn svg{ margin-bottom:8px;}
+  .type-choice-btn div{ font-size:13px; font-weight:700;}
+
+  .field-label{ font-size:12px; color:var(--text-dim); font-weight:600; margin-bottom:6px; margin-top:16px;}
+  .text-input{
+    width:100%; background:var(--card-2); border:1px solid var(--border); border-radius:12px; padding:12px 14px;
+    color:var(--text); font-size:14px; outline:none;
+  }
+  .text-input:focus{ border-color:var(--purple);}
+  .unit-tabs{ display:flex; gap:8px; margin-bottom:12px;}
+  .unit-tab{ flex:1; text-align:center; padding:10px 0; background:var(--card-2); border:1px solid var(--border); border-radius:10px; font-size:13px; font-weight:700; color:var(--text-dim); cursor:pointer;}
+  .unit-tab.active{ border-color:var(--purple); color:#fff; background:rgba(124,92,255,0.18);}
+  .wizard-nav{ display:flex; gap:10px; margin-top:20px;}
+  .btn-secondary{ flex:1; text-align:center; padding:13px 0; border-radius:12px; background:var(--card-2); border:1px solid var(--border); color:var(--text); font-weight:700; font-size:14px; cursor:pointer;}
+  .btn-primary{ flex:1; text-align:center; padding:13px 0; border-radius:12px; background:var(--purple); color:#fff; font-weight:700; font-size:14px; cursor:pointer; border:none;}
+  .btn-danger{ flex:1; text-align:center; padding:13px 0; border-radius:12px; background:rgba(255,84,112,0.15); border:1px solid rgba(255,84,112,0.4); color:var(--red); font-weight:700; font-size:14px; cursor:pointer;}
+
+  .action-row{ display:flex; align-items:center; gap:12px; padding:14px 4px; cursor:pointer; border-radius:12px;}
+  .action-row:hover{ background:var(--card-2);}
+  .action-row.danger{ color:var(--red);}
+
+  .acct-topbar{ display:flex; align-items:center; justify-content:center; position:relative; margin-bottom:18px;}
+  .acct-topbar .title{ font-size:17px;}
+  .acct-topbar .icon-btn{ position:absolute; right:0;}
+
+  .profile-card{
+    background:var(--card); border:1px solid var(--border); border-radius:18px; padding:16px;
+    display:flex; align-items:center; gap:14px; cursor:pointer; margin-bottom:16px; transition:.15s;
+  }
+  .profile-card:hover{ border-color:#3a3552;}
+  .profile-avatar{
+    width:52px; height:52px; border-radius:50%; background:linear-gradient(140deg,var(--purple-glow),var(--purple-2));
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .profile-name{ font-size:15px; font-weight:700; margin-bottom:3px;}
+  .profile-id{ font-size:12px; color:var(--text-dim);}
+
+  .info-card{ background:var(--card); border:1px solid var(--border); border-radius:18px; padding:16px; margin-bottom:14px;}
+  .info-head{ display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .info-icon{ width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .info-title{ font-size:14px; font-weight:700;}
+  .sub-dates{ font-size:12px; color:var(--text-dim); margin-top:10px; line-height:1.6;}
+  .upgrade-btn{
+    width:100%; margin-top:12px; text-align:center; padding:12px 0; border-radius:12px; background:var(--purple);
+    color:#fff; font-weight:700; font-size:14px; cursor:pointer; border:none; box-shadow:0 6px 14px -4px rgba(124,92,255,0.6);
+  }
+  .trial-sub{ font-size:12px; color:var(--text-dim); line-height:1.5; margin-top:4px;}
+  .trial-highlight{ color:var(--amber); font-weight:700;}
+  .security-row{ display:flex; justify-content:space-between; align-items:center;}
+  .status-active{ color:var(--green); font-weight:700; font-size:13px;}
+  .help-row{ display:flex; justify-content:space-between; align-items:center; cursor:pointer;}
+  .help-link{ color:var(--purple-glow); font-weight:600; font-size:13px;}
+  .logout-btn{
+    width:100%; text-align:center; padding:14px 0; border-radius:14px; background:rgba(255,84,112,0.1);
+    border:1px solid rgba(255,84,112,0.4); color:var(--red); font-weight:700; font-size:14px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px;
+  }
+
+  .wallet-box{
+    background:var(--card-2); border:1px solid var(--border); border-radius:14px; padding:14px; margin:10px 0;
+  }
+  .wallet-label{ font-size:11px; color:var(--text-dim); margin-bottom:6px; font-weight:600;}
+  .wallet-addr{ font-size:12px; font-family:monospace; color:var(--text); word-break:break-all; line-height:1.5;}
+  .copy-btn{
+    display:flex; align-items:center; justify-content:center; gap:6px; margin-top:10px; padding:9px 0;
+    background:var(--purple); color:#fff; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; border:none;
+  }
+  .plan-pick{ display:flex; flex-direction:column; gap:10px; margin-top:12px;}
+  .plan-pick-row{
+    display:flex; justify-content:space-between; align-items:center; background:var(--card-2); border:1px solid var(--border);
+    border-radius:12px; padding:14px; cursor:pointer;
+  }
+  .plan-pick-row.selected{ border-color:var(--purple); background:rgba(124,92,255,0.12);}
+  .pending-box{ text-align:center; padding:20px 10px;}
+  .pending-icon{ width:56px; height:56px; border-radius:50%; background:rgba(255,181,69,0.15); display:flex; align-items:center; justify-content:center; margin:0 auto 14px;}
+  .pending-title{ font-size:15px; font-weight:700; margin-bottom:8px;}
+  .pending-sub{ font-size:13px; color:var(--text-dim); line-height:1.5; margin-bottom:16px;}
+</style>
 </head>
 <body>
 
-    <div id="toastBox" class="toast hidden"></div>
+<div class="phone">
+  <div class="screen" id="screen">
 
-    <!-- Header Section -->
-    <div class="header">
-        <h2 style="margin:0; font-size: 18px;">Seren Chat</h2>
-        <div class="bell-icon" onclick="openNotifications()">
-            🔔 <div class="red-dot" id="bellBadge"></div>
+    <div class="statusbar"><span>9:41</span><span>●●●● ▂▄▆█ 100%</span></div>
+
+    <!-- ============ DASHBOARD PAGE ============ -->
+    <div id="page-dashboard">
+      <div class="topbar">
+        <div class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f2f0fa" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+        <div class="title" data-i18n="app_title">Seren Chat</div>
+        <div class="icon-btn" onclick="openPanel('ann')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f2f0fa" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 4 1.5 5 2 6H4c.5-1 2-2 2-6Z"/><path d="M9.5 18a2.5 2.5 0 0 0 5 0"/></svg>
+          <div class="badge" id="bellBadge">0</div>
         </div>
+      </div>
+
+      <div class="bot-card">
+        <div class="bot-row">
+          <div class="bot-info">
+            <div class="bot-label">Bot status</div>
+            <div class="bot-status-row">
+              <span class="lbl">Seren</span>
+              <span class="pill-on"><span class="dot-pulse"></span>ON</span>
+            </div>
+            <div class="bot-sub">Seren is running smoothly and watching every conversation.</div>
+          </div>
+          <div class="bot-avatar">
+            <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="8" width="14" height="11" rx="4" fill="#5b3dd6"/><circle cx="9.5" cy="13.5" r="1.6" fill="#9be8ff"/><circle cx="14.5" cy="13.5" r="1.6" fill="#9be8ff"/><rect x="10.5" y="3" width="3" height="4" rx="1.5" fill="#5b3dd6"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="segmented">
+        <div class="seg-btn active" id="segGroups" onclick="setMode('groups')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 20v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Groups Only
+        </div>
+        <div class="seg-btn" id="segDM" onclick="setMode('dm')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Private DM
+        </div>
+      </div>
+
+      <div class="section-title" id="statsHeader">Statistics (today) — groups</div>
+
+      <div class="grid2">
+        <div class="stat-card" onclick="switchTab('targets')">
+          <div class="stat-top"><div class="stat-icon" style="background:rgba(124,92,255,0.15); color:var(--purple-glow);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.5" fill="currentColor"/></svg>
+          </div><div class="stat-label" id="targetsLabel">Active targets</div></div>
+          <div class="stat-value" id="targetsValue">0 <span class="unit">groups</span></div>
+        </div>
+
+        <div class="stat-card" onclick="openPanel('accounts')">
+          <div class="stat-top"><div class="stat-icon" style="background:rgba(255,181,69,0.15); color:var(--amber);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div><div class="stat-label">Active accounts</div></div>
+          <div class="stat-value">1</div>
+        </div>
+
+        <div class="stat-card" onclick="openPanel('today')">
+          <div class="stat-top"><div class="stat-icon" style="background:rgba(61,220,132,0.15); color:var(--green);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div><div class="stat-label">Replies today</div></div>
+          <div class="stat-value" id="todayValue">0</div>
+        </div>
+
+        <div class="stat-card" onclick="openPanel('week')">
+          <div class="stat-top"><div class="stat-icon" style="background:rgba(255,84,112,0.15); color:var(--red);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 17 9 11 13 15 21 7"/></svg>
+          </div><div class="stat-label">Replies this week</div></div>
+          <div class="stat-value" id="weekValue">0</div>
+        </div>
+
+        <div class="stat-card" onclick="openPanel('total')" style="grid-column: span 2;">
+          <div class="stat-top"><div class="stat-icon" style="background:rgba(124,92,255,0.15); color:var(--purple-glow);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </div><div class="stat-label">Total replies</div></div>
+          <div class="stat-value" id="totalValue">0</div>
+        </div>
+      </div>
+
+      <div class="section-title" data-i18n="subscription_title">Subscription</div>
+      <div class="sub-card">
+        <div class="sub-head">
+          <div class="sub-plan">👑 <span id="planName">Free Plan</span></div>
+          <div class="sub-days" id="planDays">Active</div>
+        </div>
+        <div class="progress"><div class="progress-fill" id="progressFill" style="width:100%"></div></div>
+        <div class="plans">
+          <div class="plan-btn" onclick="selectPlan(this,'1 Week Plan',7,'$7',100)">
+            <div class="plan-name">1 week</div><div class="plan-price">$7</div>
+          </div>
+          <div class="plan-btn" onclick="selectPlan(this,'2 Week Plan',14,'$14',100)">
+            <div class="plan-name">2 weeks</div><div class="plan-price">$14</div>
+          </div>
+          <div class="plan-btn" onclick="selectPlan(this,'1 Month Plan',30,'$30',100)">
+            <div class="plan-name">1 month</div><div class="plan-price">$30</div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Content Area -->
-    <div class="content-area">
-        
-        <!-- PAGE 0: REGISTER & LOGIN -->
-        <div id="page-register">
-            <div class="card">
-                <h3>Connect Telegram Account</h3>
-                <input type="text" id="regApiId" class="input-field" placeholder="Enter API ID">
-                <input type="text" id="regApiHash" class="input-field" placeholder="Enter API Hash">
-                <input type="text" id="regPhone" class="input-field" placeholder="Enter Phone (e.g. +234...)">
-                <button class="toggle-btn" onclick="handleRegisterStep1()">Request OTP</button>
-            </div>
-
-            <div class="card hidden" id="otpSection">
-                <h3>Enter OTP Code</h3>
-                <input type="text" id="regOtp" class="input-field" placeholder="Enter Verification Code">
-                <button class="toggle-btn" onclick="handleRegisterStep2()">Verify OTP</button>
-            </div>
-
-            <div class="card hidden" id="passwordSection">
-                <h3>2-Step Verification</h3>
-                <input type="password" id="reg2fa" class="input-field" placeholder="Enter Cloud Password">
-                <button class="toggle-btn" onclick="handleRegisterStep2(true)">Submit Password</button>
-            </div>
+    <!-- ============ TARGETS PAGE ============ -->
+    <div id="page-targets" style="display:none;">
+      <div class="targets-header">
+        <div class="header-left">
+          <div class="icon-btn" onclick="switchTab('dash')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f2f0fa" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></div>
+          <div class="title" data-i18n="targets_title">Targets</div>
         </div>
+        <button class="add-btn" onclick="openAddWizard()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span data-i18n="add_target">Add target</span></button>
+      </div>
 
-        <!-- PAGE 1: DASHBOARD -->
-        <div id="page-dashboard" class="hidden">
-            <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <h3 style="margin:0;">Bot Status</h3>
-                    <p style="margin:5px 0 0 0; color:var(--text-muted); font-size:12px;">Seren Auto Reply System</p>
-                </div>
-                <span style="background:#10b981; padding:4px 10px; border-radius:20px; font-size:12px;">ON</span>
-            </div>
-            
-            <div class="card">
-                <button class="toggle-btn" id="modeToggle" onclick="toggleMode()">Mode: Groups Only</button>
-            </div>
+      <div class="type-tabs">
+        <div class="type-tab active" id="tabGroups" onclick="setTargetTab('group')">Groups (<span id="countGroups">0</span>)</div>
+        <div class="type-tab" id="tabDMs" onclick="setTargetTab('dm')">DMs (<span id="countDMs">0</span>)</div>
+      </div>
+      <div class="demo-label" id="quotaNote" style="margin-bottom:12px; display:block;"></div>
 
-            <div class="stats-grid">
-                <div class="card">
-                    <span style="font-size:12px; color:var(--text-muted);">Active Targets</span>
-                    <h2 id="dashTargets">0 Targets</h2>
-                </div>
-                <div class="card">
-                    <span style="font-size:12px; color:var(--text-muted);">Replies Today</span>
-                    <h2 id="dashToday">0</h2>
-                </div>
-            </div>
-
-            <div class="animation-box" style="margin-top: 20px;">
-                <div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div>
-            </div>
-        </div>
-
-        <!-- PAGE 2: TARGETS -->
-        <div id="page-targets" class="hidden">
-            <div class="card">
-                <h3>Manage Targets</h3>
-                <p style="color:var(--text-muted);">Configure your target groups or chats here.</p>
-            </div>
-        </div>
-
-        <!-- PAGE 3: ACCOUNT -->
-        <div id="page-account" class="hidden">
-            <div class="card">
-                <h3 id="accUsername">@Account</h3>
-                <p style="color:var(--text-muted);">Status: Active</p>
-            </div>
-        </div>
-
-        <!-- PAGE 4: ADMIN DASHBOARD -->
-        <div id="page-admin" class="hidden">
-            <div class="card">
-                <h3>Admin Control Panel</h3>
-                <p>System wide analytics and tools.</p>
-            </div>
-        </div>
-
+      <div id="targetsList"></div>
     </div>
 
-    <!-- Navigation Bar -->
-    <div class="nav-bar">
-        <div class="nav-item" id="btn-dash" onclick="switchPage('dashboard')">🏠<br>Dashboard</div>
-        <div class="nav-item" id="btn-targets" onclick="switchPage('targets')">📋<br>Targets</div>
-        <div class="nav-item" id="btn-account" onclick="switchPage('account')">👤<br>Account</div>
-        <div class="nav-item hidden" id="btn-admin" onclick="switchPage('admin')">⚙️<br>Admin</div>
+    <!-- ============ ACCOUNT PAGE ============ -->
+    <div id="page-account" style="display:none;">
+      <div class="acct-topbar">
+        <div class="title" data-i18n="account_title">Account</div>
+        <div class="icon-btn" onclick="openPanel('settings')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--purple-glow)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+      </div>
+
+      <div class="profile-card" onclick="openPanel('history')">
+        <div class="profile-avatar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg></div>
+        <div style="flex:1;">
+          <div class="profile-name"><span id="profileNameText">@User</span> <span id="profileBlueTick" class="blue-tick" style="display:none;">✔️</span></div>
+          <div class="profile-id" id="profileIdText">User ID: ---</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+
+      <div class="info-card">
+        <div class="info-head">
+          <div class="info-icon" style="background:rgba(255,181,69,0.15);">👑</div>
+          <div style="flex:1;">
+            <div class="info-title" style="color:var(--green);" id="acctPlanName">Free Plan</div>
+          </div>
+          <div class="sub-days" id="acctDaysLeft">Active</div>
+        </div>
+        <div class="sub-dates">
+          Status: <span id="acctStartDate">Standard Tier</span>
+        </div>
+        <button class="upgrade-btn" onclick="openUpgradeWizard()" data-i18n="upgrade_plan">Upgrade Plan</button>
+      </div>
+
+      <div class="info-card">
+        <div class="info-head">
+          <div class="info-icon" style="background:rgba(61,220,132,0.15);">🛡️</div>
+          <div style="flex:1;"><div class="info-title">Account Security</div></div>
+        </div>
+        <div class="security-row">
+          <span class="row-sub">Session Status</span>
+          <span class="status-active">Active</span>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="help-row" onclick="openPanel('help')">
+          <div class="info-head" style="margin-bottom:0;">
+            <div class="info-icon" style="background:rgba(124,92,255,0.15);">❓</div>
+            <div style="flex:1;">
+              <div class="info-title" data-i18n="help_support">Help &amp; Support</div>
+              <div class="row-sub" style="margin-top:2px;" data-i18n="contact_us">Contact Us</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="help-link">chatseren@gmail.com</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="logout-btn" onclick="openPanel('logout')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span data-i18n="logout">Logout</span>
+      </div>
     </div>
 
-    <script>
-        const CURRENT_USER_TGID = "123456789"; 
-        const BACKEND_URL = "http://localhost:5000"; 
-        let currentMode = "Groups Only";
+    <div class="toast" id="toast"></div>
+  </div>
 
-        function showToast(msg) {
-            const box = document.getElementById('toastBox');
-            box.innerText = msg;
-            box.classList.remove('hidden');
-            setTimeout(() => { box.classList.add('hidden'); }, 3000);
-        }
+  <div class="bottomnav">
+    <div class="nav-item active" id="navDash" onclick="switchTab('dash')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <span data-i18n="nav_dashboard">Dashboard</span>
+    </div>
+    <div class="nav-item" id="navTargets" onclick="switchTab('targets')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <span data-i18n="nav_targets">Targets</span>
+    </div>
+    <div class="nav-item" id="navAccount" onclick="switchTab('account')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span data-i18n="nav_account">Account</span>
+    </div>
+  </div>
 
-        function switchPage(page) {
-            const pages = ['register', 'dashboard', 'targets', 'account', 'admin'];
-            pages.forEach(p => {
-                const el = document.getElementById('page-' + p);
-                if(el) el.classList.add('hidden');
-                const btn = document.getElementById('btn-' + p);
-                if(btn) btn.classList.remove('active');
-            });
-            
-            document.getElementById('page-' + page).classList.remove('hidden');
-            const activeBtn = document.getElementById('btn-' + page);
-            if(activeBtn) activeBtn.classList.add('active');
-        }
+  <div class="overlay" id="overlay" onclick="if(event.target===this) closePanel()">
+    <div class="panel" id="panelBody"></div>
+  </div>
+</div>
 
-        function toggleMode() {
-            currentMode = (currentMode === "Groups Only") ? "Private DMs" : "Groups Only";
-            document.getElementById('modeToggle').innerText = "Mode: " + currentMode;
-        }
+<script>
+const dashData = {
+  groups: {
+    label: 'Statistics (today) — groups',
+    targetsLabel: 'Active targets', targetsUnit: 'groups',
+    today: 0, week: 0, total: '0',
+    replies: []
+  },
+  dm: {
+    label: 'Statistics (today) — private DM',
+    targetsLabel: 'Active targets', targetsUnit: 'account',
+    today: 0, week: 0, total: '0',
+    replies: []
+  }
+};
 
-        function openNotifications() {
-            showToast("No new notifications.");
-            document.getElementById('bellBadge').style.display = 'none';
-        }
+let mode = 'groups';
+let currentLang = 'en';
+let currentTheme = 'dark';
 
-        // REGISTER PROCESS ACTIONS
-        function handleRegisterStep1() {
-            const apiId = document.getElementById('regApiId').value.trim();
-            const apiHash = document.getElementById('regApiHash').value.trim();
-            const phone = document.getElementById('regPhone').value.trim();
-            if(!apiId || !apiHash || !phone) {
-                showToast("Please fill all fields.");
-                return;
-            }
-            submitRegisterStep1(apiId, apiHash, phone);
-        }
+const TRANSLATIONS = {
+  en: {
+    app_title: 'Seren Chat',
+    subscription_title: 'Subscription',
+    targets_title: 'Targets',
+    add_target: 'Add target',
+    account_title: 'Account',
+    upgrade_plan: 'Upgrade Plan',
+    logout: 'Logout',
+    help_support: 'Help & Support',
+    contact_us: 'Contact Us',
+    nav_dashboard: 'Dashboard',
+    nav_targets: 'Targets',
+    nav_account: 'Account',
+  },
+  ha: {
+    app_title: 'Seren Chat',
+    subscription_title: 'Biyan Kuɗi',
+    targets_title: 'Targets',
+    add_target: 'Ƙara Target',
+    account_title: 'Asusu',
+    upgrade_plan: 'Sabunta Plan',
+    logout: 'Fita',
+    help_support: 'Taimako',
+    contact_us: 'Tuntuɓe Mu',
+    nav_dashboard: 'Dashboard',
+    nav_targets: 'Targets',
+    nav_account: 'Asusu',
+  }
+};
 
-        function handleRegisterStep2(is2FA = false) {
-            const code = document.getElementById('regOtp').value.trim();
-            const pwd = is2FA ? document.getElementById('reg2fa').value.trim() : null;
-            if(!code && !is2FA) {
-                showToast("Please enter the OTP code.");
-                return;
-            }
-            submitRegisterStep2(code, pwd);
-        }
+function applyLanguage(){
+  const dict = TRANSLATIONS[currentLang];
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    if(dict[key]) el.textContent = dict[key];
+  });
+}
 
-        // BACKEND API CONNECTION
-        async function submitRegisterStep1(apiId, apiHash, phoneNumber) {
-            showToast("Connecting to Telegram Server...");
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/auth/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ api_id: apiId, api_hash: apiHash, phone: phoneNumber, tgId: CURRENT_USER_TGID })
-                });
-                const result = await response.json();
-                
-                if (result.status === "need_code") {
-                    showToast("OTP Sent! Check your Telegram App 💬");
-                    document.getElementById('otpSection').classList.remove('hidden'); 
-                } else {
-                    showToast("Error: " + result.message);
-                }
-            } catch (error) {
-                showToast("Server Connection Failed.");
-            }
-        }
+function setLanguage(lang){
+  currentLang = lang;
+  applyLanguage();
+  openPanel('settings');
+  showToast(lang==='ha' ? 'Harshe ya koma Hausa' : 'Language switched to English');
+}
 
-        async function submitRegisterStep2(otpCode, cloudPassword = null) {
-            showToast("Verifying credentials...");
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/auth/verify`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tgId: CURRENT_USER_TGID, code: otpCode, password: cloudPassword })
-                });
-                const result = await response.json();
-                
-                if (result.status === "authorized") {
-                    showToast("Success! Seren Chat Connected.");
-                    switchPage('dashboard');
-                } else if (result.status === "need_2fa") {
-                    showToast("2FA Protected! Input your Cloud Password.");
-                    document.getElementById('passwordSection').classList.remove('hidden');
-                } else {
-                    showToast("Verification Failed: " + result.message);
-                }
-            } catch (error) {
-                showToast("Verification Error.");
-            }
-        }
-    </script>
+const LIGHT_VARS = {
+  '--bg': '#f4f3fb', '--card': '#ffffff', '--card-2': '#f0eef9',
+  '--text': '#1a1826', '--text-dim': '#5b5876', '--text-faint': '#8b88a3',
+  '--border': '#e2dff2',
+};
+const DARK_VARS = {
+  '--bg': '#0b0a12', '--card': '#15131f', '--card-2': '#1b1828',
+  '--text': '#f2f0fa', '--text-dim': '#9c98b4', '--text-faint': '#6b6885',
+  '--border': '#262336',
+};
+
+function setTheme(theme){
+  currentTheme = theme;
+  const vars = theme==='light' ? LIGHT_VARS : DARK_VARS;
+  const root = document.querySelector('.phone');
+  Object.keys(vars).forEach(k=> root.style.setProperty(k, vars[k]));
+  openPanel('settings');
+  showToast(theme==='light' ? 'Switched to Light mode' : 'Switched to Dark mode');
+}
+
+let announcements = [];
+let targets = [];
+let nextId = 1;
+let targetTab = 'group';
+let editingId = null;
+let deletingId = null;
+let kebabOpenId = null;
+
+let CURRENT_USER_TGID = '---';
+let CURRENT_USER_NAME = '@User';
+
+function initTelegramIdentity(){
+  try{
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if(tg){
+      tg.ready();
+      tg.expand();
+      const u = tg.initDataUnsafe && tg.initDataUnsafe.user;
+      if(u && u.id){
+        CURRENT_USER_TGID = String(u.id);
+        CURRENT_USER_NAME = u.username ? ('@' + u.username) : (u.first_name || 'Telegram user');
+      }
+    }
+  }catch(e){}
+
+  const nameEl = document.getElementById('profileNameText');
+  const idEl = document.getElementById('profileIdText');
+  if(nameEl) nameEl.textContent = CURRENT_USER_NAME;
+  if(idEl) idEl.textContent = 'User ID: ' + CURRENT_USER_TGID;
+}
+
+let acctSub = {
+  planName: 'Free Plan',
+  endDateObj: null,
+};
+
+function isPremiumActive(){ return acctSub.planName !== 'Free Plan'; }
+
+function getMaxTargets(){
+  if(!isPremiumActive()) return 1;
+  if(acctSub.planName.includes('1 Week')) return 3;
+  if(acctSub.planName.includes('2 Week')) return 6;
+  if(acctSub.planName.includes('1 Month')) return 12;
+  return 1;
+}
+
+function activatePlan(planLabel, days){
+  acctSub.planName = planLabel;
+  refreshSubscriptionUI();
+}
+
+function refreshSubscriptionUI(){
+  const active = isPremiumActive();
+  const planNameEl = document.getElementById('planName');
+  const planDaysEl = document.getElementById('planDays');
+  if(planNameEl) planNameEl.textContent = acctSub.planName;
+  if(planDaysEl) planDaysEl.textContent = active ? 'Premium Active' : 'Standard';
+
+  const acctPlanNameEl = document.getElementById('acctPlanName');
+  const acctDaysEl = document.getElementById('acctDaysLeft');
+  if(acctPlanNameEl) acctPlanNameEl.textContent = acctSub.planName;
+  if(acctDaysEl) acctDaysEl.textContent = active ? 'Premium Tier' : 'Standard';
+
+  const tickEl = document.getElementById('profileBlueTick');
+  if(tickEl) tickEl.style.display = active ? 'inline' : 'none';
+
+  renderTargetsList();
+}
+
+const WALLET_ADDRESS = 'UQAd3qqKMuMi-cZlMeEmO4NkAzLsvYPsiHYmt7zBdMVTB8Hc';
+let upgrade = { step:1, planKey:null, planLabel:'', planDays:0, txnId:'' };
+
+function setMode(m){
+  mode = m;
+  document.getElementById('segGroups').classList.toggle('active', m==='groups');
+  document.getElementById('segDM').classList.toggle('active', m==='dm');
+  const d = dashData[m];
+  document.getElementById('statsHeader').textContent = d.label;
+  document.getElementById('targetsLabel').textContent = d.targetsLabel;
+  const cnt = targets.filter(t=>t.type===(m==='groups'?'group':'dm')).length;
+  document.getElementById('targetsValue').innerHTML = cnt + ' <span class="unit">'+d.targetsUnit+'</span>';
+  document.getElementById('todayValue').textContent = d.today;
+  document.getElementById('weekValue').textContent = d.week;
+  document.getElementById('totalValue').textContent = d.total;
+}
+
+function switchTab(tab){
+  document.getElementById('navDash').classList.toggle('active', tab==='dash');
+  document.getElementById('navTargets').classList.toggle('active', tab==='targets');
+  document.getElementById('navAccount').classList.toggle('active', tab==='account');
+  document.getElementById('page-dashboard').style.display = (tab==='dash') ? '' : 'none';
+  document.getElementById('page-targets').style.display = (tab==='targets') ? '' : 'none';
+  document.getElementById('page-account').style.display = (tab==='account') ? '' : 'none';
+  if(tab==='targets'){ renderTargetsList(); }
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+function openPanel(kind){
+  const overlay = document.getElementById('overlay');
+  const body = document.getElementById('panelBody');
+  let html = '';
+
+  if(kind === 'ann'){
+    html = `<div class="panel-head"><div class="panel-title">Announcements</div><div class="close-x" onclick="closePanel()">✕</div></div>`;
+    if(announcements.length === 0){
+      html += `<div class="empty-note">No new announcements.</div>`;
+    }
+  }
+
+  if(kind === 'accounts'){
+    html = `<div class="panel-head"><div class="panel-title">Active account</div><div class="close-x" onclick="closePanel()">✕</div></div>
+    <div class="list-row">
+      <div class="list-left"><div class="avatar-sm">S</div><div><div class="row-name">Seren Bot Engine</div><div class="row-sub">Connected via Session</div></div></div>
+      <div class="pill-on" style="background:rgba(61,220,132,0.15);"><span class="dot-pulse"></span>Active</div>
+    </div>`;
+  }
+
+  if(kind === 'today' || kind === 'week' || kind === 'total'){
+    html = `<div class="panel-head"><div class="panel-title">Analytics</div><div class="close-x" onclick="closePanel()">✕</div></div>
+    <div class="empty-note">Live operational logs show here when active.</div>`;
+  }
+
+  if(kind === 'kebab'){
+    const t = targets.find(x=>x.id===kebabOpenId);
+    html = `<div class="panel-head"><div class="panel-title">${t.name}</div><div class="close-x" onclick="closePanel()">✕</div></div>
+    <div class="action-row" onclick="closePanel(); openEditWizard(${t.id});">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+      Edit target
+    </div>
+    <div class="action-row danger" onclick="closePanel(); openDeleteConfirm(${t.id});">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      Delete target
+    </div>`;
+  }
+
+  if(kind === 'delete'){
+    const t = targets.find(x=>x.id===deletingId);
+    html = `<div class="panel-head"><div class="panel-title">Delete target</div><div class="close-x" onclick="closePanel()">✕</div></div>
+    <div style="font-size:14px; color:var(--text-dim); line-height:1.5; margin-bottom:6px;">
+      Are you sure you want to delete <strong style="color:var(--text)">${t.name}</strong>?
+    </div>
+    <div class="wizard-nav">
+      <div class="btn-secondary" onclick="closePanel()">Cancel</div>
+      <div class="btn-danger" onclick="confirmDelete()">Yes, delete</div>
+    </div>`;
+  }
+
+  if(kind === 'add' || kind === 'edit'){
+    html = buildWizardHTML(kind);
+  }
+
+  if(kind === 'settings'){
+    html = `<div class="panel-head"><div class="panel-title">Settings</div><div class="close-x" onclick="closePanel()">✕</div></div>
+    <div class="field-label" style="margin-top:0;">Language</div>
+    <div class="unit-tabs">
+      <div class="unit-tab ${currentLang==='en'?'active':''}" onclick="setLanguage('en')">English</div>
+      <div class="unit-tab ${currentLang==='ha'?'active':''}" onclick="setLanguage('ha')">Hausa</div>
+    </div>
+    <div class="field-label">Theme</div>
+    <div class="unit-tabs">
+      <div class="unit-tab ${currentTheme==='dark'?'active':''}" onclick="setTheme('dark')">Dark</div>
+      <div class="unit-tab ${currentTheme==='light'?'active':''}" onclick="setTheme('light')">Light</div>
+    </div>`;
+  }
+
+  if(kind === 'history'){
+    html = `<div class="panel-head"><div class="panel-title">Account Activity</div><div class="close-x" onclick="closePanel()">✕</div></div>
+    <div class="empty-note">No recent updates.</div>`;
+  }
+
+  if(kind === 'help'){
+    html = `<div class="panel-head"><div class="panel-title">Help &amp; Support</div><div class="close-x" onclick="closePanel()">✕</div></div>
+    <div class="list-row">
+      <div class="list-left"><div class="avatar-sm">✉️</div><div><div class="row-name">Email Support</div><div class="row-sub">chatseren@gmail.com</div></div></div>
+    </div>`;
+  }
+
+  if(kind === 'logout'){
+    html = `<div class="panel-head"><div class="panel-title">Logout</div><div class="close-x" onclick="closePanel()">✕</div></div>
+    <div style="font-size:14px; color:var(--text-dim); line-height:1.5; margin-bottom:6px;">Are you sure you want to close the Web App?</div>
+    <div class="wizard-nav">
+      <div class="btn-secondary" onclick="closePanel()">Cancel</div>
+      <div class="btn-danger" onclick="try{window.Telegram.WebApp.close();}catch(e){closePanel();}">Yes, Close</div>
+    </div>`;
+  }
+
+  if(kind === 'upgrade'){
+    html = buildUpgradeHTML();
+  }
+
+  body.innerHTML = html;
+  overlay.classList.add('show');
+}
+
+function closePanel(){
+  document.getElementById('overlay').classList.remove('show');
+}
+
+function selectPlan(el, name, days, price, progress){
+  document.querySelectorAll('.plan-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+  activatePlan(name, days);
+  showToast(name + ' selected');
+}
+
+function setTargetTab(t){
+  targetTab = t;
+  document.getElementById('tabGroups').classList.toggle('active', t==='group');
+  document.getElementById('tabDMs').classList.toggle('active', t==='dm');
+  renderTargetsList();
+}
+
+function unitLabel(u){ return u==='S' ? 's' : (u==='M' ? 'm' : 'h'); }
+
+function renderTargetsList(){
+  if(!document.getElementById('countGroups')) return;
+  document.getElementById('countGroups').textContent = targets.filter(t=>t.type=='group').length;
+  document.getElementById('countDMs').textContent = targets.filter(t=>t.type=='dm').length;
+  const limit = getMaxTargets();
+  document.getElementById('quotaNote').textContent = `${targets.length} of ${limit} targets active`;
+  const list = targets.filter(t=>t.type===targetTab);
+  const wrap = document.getElementById('targetsList');
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty-note">No active targets found. Click Add Target to begin.</div>`;
+    return;
+  }
+  let html = '';
+  list.forEach(t=>{
+    html += `
+    <div class="target-card">
+      <div class="target-top">
+        <div class="target-name"><span class="status-dot ${t.on?'':'off'}"></span>${t.name}</div>
+        <div class="target-actions">
+          <div class="switch ${t.on?'on':''}" onclick="toggleTarget(${t.id})"><div class="switch-knob"></div></div>
+          <div class="kebab" onclick="kebabOpenId=${t.id}; openPanel('kebab')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="target-foot">
+        <div class="delay-tag"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>Delay: ${t.delayVal}${unitLabel(t.delayUnit)}</div>
+      </div>
+    </div>`;
+  });
+  wrap.innerHTML = html;
+}
+
+function toggleTarget(id){
+  const t = targets.find(x=>x.id===id);
+  t.on = !t.on;
+  showToast(t.name + (t.on ? ' Active' : ' Paused'));
+  renderTargetsList();
+}
+
+function openDeleteConfirm(id){
+  deletingId = id;
+  openPanel('delete');
+}
+
+function confirmDelete(){
+  const t = targets.find(x=>x.id===deletingId);
+  targets = targets.filter(x=>x.id!==deletingId);
+  closePanel();
+  showToast(t.name + ' deleted');
+  renderTargetsList();
+}
+
+let wizard = { step:1, type:'group', name:'', delayUnit:'S', delayVal:'' };
+
+function openAddWizard(){
+  const limit = getMaxTargets();
+  if(targets.length >= limit){
+    showToast('Upgrade your plan to unlock more targets');
+    return;
+  }
+  editingId = null;
+  wizard = { step:1, type: targetTab, name:'', delayUnit:'S', delayVal:'' };
+  openPanel('add');
+}
+
+function openEditWizard(id){
+  const t = targets.find(x=>x.id===id);
+  editingId = id;
+  wizard = { step:2, type:t.type, name:t.name, delayUnit:t.delayUnit, delayVal:String(t.delayVal) };
+  openPanel('edit');
+}
+
+function buildWizardHTML(kind){
+  const isEdit = kind==='edit';
+  const title = isEdit ? 'Edit target' : 'Add target';
+
+  if(!isEdit && wizard.step===1){
+    return `<div class="panel-head"><div class="panel-title">${title}</div><div class="close-x" onclick="closePanel()">✕</div></div>
+    <div class="field-label" style="margin-top:0;">Select Type</div>
+    <div class="type-choice">
+      <div class="type-choice-btn ${wizard.type==='group'?'selected':''}" onclick="wizard.type='group'; openPanel('add')">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <div>Group</div>
+      </div>
+      <div class="type-choice-btn ${wizard.type==='dm'?'selected':''}" onclick="wizard.type='dm'; openPanel('add')">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <div>Private DM</div>
+      </div>
+    </div>
+    <div class="wizard-nav">
+      <div class="btn-primary" onclick="wizard.step=2; openPanel('add')" style="width:100%;">Continue</div>
+    </div>`;
+  }
+
+  return `<div class="panel-head"><div class="panel-title">${title}</div><div class="close-x" onclick="closePanel()">✕</div></div>
+    <div class="field-label" style="margin-top:0;">${wizard.type==='group' ? 'Group Username / Link' : 'Username'}</div>
+    <input class="text-input" id="wizName" placeholder="${wizard.type==='group' ? '@groupname' : '@username'}" value="${wizard.name}">
+    <div class="field-label">Delay Strategy</div>
+    <div class="unit-tabs">
+      <div class="unit-tab ${wizard.delayUnit==='S'?'active':''}" onclick="wizard.delayUnit='S'; syncWizardName(); openPanel('${kind}')">Seconds</div>
+      <div class="unit-tab ${wizard.delayUnit==='M'?'active':''}" onclick="wizard.delayUnit='M'; syncWizardName(); openPanel('${kind}')">Minutes</div>
+    </div>
+    <input class="text-input" id="wizDelay" type="number" min="1" placeholder="e.g. 30" value="${wizard.delayVal}">
+    <div class="wizard-nav">
+      ${isEdit ? '' : `<div class="btn-secondary" onclick="syncWizardName(); wizard.step=1; openPanel('add')">Back</div>`}
+      <div class="btn-primary" onclick="submitWizard('${kind}')">${isEdit ? 'Save' : 'Add'}</div>
+    </div>`;
+}
+
+function syncWizardName(){
+  const nameEl = document.getElementById('wizName');
+  const delayEl = document.getElementById('wizDelay');
+  if(nameEl) wizard.name = nameEl.value;
+  if(delayEl) wizard.delayVal = delayEl.value;
+}
+
+function submitWizard(kind){
+  const name = document.getElementById('wizName').value.trim();
+  const delayVal = parseInt(document.getElementById('wizDelay').value, 10);
+  if(!name || !delayVal){ showToast('Fill all fields correctly'); return; }
+
+  if(kind==='edit'){
+    const t = targets.find(x=>x.id===editingId);
+    t.name = name;
+    t.delayUnit = wizard.delayUnit;
+    t.delayVal = delayVal;
+    showToast('Updated');
+  } else {
+    targets.push({ id:nextId++, type:wizard.type, name, on:true, delayUnit:wizard.delayUnit, delayVal });
+    showToast('Target Added');
+  }
+  closePanel();
+  renderTargetsList();
+}
+
+const PLAN_OPTIONS = [
+  { key:'1w', label:'1 Week Plan', days:7, price:'$7' },
+  { key:'2w', label:'2 Week Plan', days:14, price:'$14' },
+  { key:'1m', label:'1 Month Plan', days:30, price:'$30' },
+];
+
+function openUpgradeWizard(){
+  upgrade = { step:1, planKey:null, planLabel:'', planDays:0, txnId:'' };
+  openPanel('upgrade');
+}
+
+function buildUpgradeHTML(){
+  if(upgrade.step===1){
+    let rows = '';
+    PLAN_OPTIONS.forEach(p=>{
+      rows += `<div class="plan-pick-row ${upgrade.planKey===p.key?'selected':''}" onclick="upgrade.planKey='${p.key}'; upgrade.planLabel='${p.label}'; upgrade.planDays=${p.days}; openPanel('upgrade')">
+        <div><div class="row-name">${p.label}</div><div class="row-sub">${p.days} days access</div></div>
+        <div class="plan-price">${p.price}</div>
+      </div>`;
+    });
+    return `<div class="panel-head"><div class="panel-title">Upgrade Plan</div><div class="close-x" onclick="closePanel()">✕</div></div>
+    <div class="plan-pick">${rows}</div>
+    <div class="wizard-nav">
+      <div class="btn-primary" style="width:100%;" onclick="if(!upgrade.planKey){showToast('Select plan');}else{upgrade.step=2; openPanel('upgrade');}">Continue</div>
+    </div>`;
+  }
+
+  return `<div class="panel-head"><div class="panel-title">${upgrade.planLabel}</div><div class="close-x" onclick="closePanel()">✕</div></div>
+    <div style="font-size:13px; color:var(--text-dim); line-height:1.5;">Send processing network fee via TON Blockchain:</div>
+    <div class="wallet-box">
+      <div class="wallet-label">TON Wallet</div>
+      <div class="wallet-addr">${WALLET_ADDRESS}</div>
+      <button class="copy-btn" onclick="navigator.clipboard.writeText('${WALLET_ADDRESS}'); showToast('Copied');">Copy Address</button>
+    </div>
+    <input class="text-input" id="txnInput" placeholder="Paste TON Transaction Hash/ID here">
+    <div class="wizard-nav">
+      <div class="btn-secondary" onclick="upgrade.step=1; openPanel('upgrade')">Back</div>
+      <div class="btn-primary" onclick="closePanel(); showToast('Verification Submitted');">Submit Order</div>
+    </div>`;
+}
+
+window.onload = () => {
+  initTelegramIdentity();
+  applyLanguage();
+  refreshSubscriptionUI();
+};
+</script>
 </body>
 </html>
