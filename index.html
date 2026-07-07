@@ -1548,3 +1548,130 @@ refreshSubscriptionUI();
 
 </body>
                                 </html>
+function revokeUser(id){ 
+    const u = approvedUsers.find(x=>x.id===id); 
+    if(!u) return; 
+    approvedUsers = approvedUsers.filter(x=>x.id!==id); 
+    adminActiveSubsCount = Math.max(0, adminActiveSubsCount - 1); 
+    renderAdminStats(); 
+    if(u.tgId === CURRENT_USER_TGID){ 
+        expirePlanNow(); 
+        announcements.unshift({ 
+            id:nextAnnId++, 
+            date:'Just now', 
+            title:'Premium revoked', 
+            body:'Your premium was revoked by an admin. Seren has stopped replying in all your groups and DMs. Contact support if you believe this is a mistake, or renew your plan to continue.', 
+            isNew:true 
+        }); 
+        refreshBellBadge(); 
+    } 
+    showToast(u.name + "'s premium was revoked"); 
+    renderAdminLists(); 
+} 
+
+function pickGrantDuration(el){ 
+    document.querySelectorAll('#grantDurationRow div').forEach(d=>d.classList.remove('active')); 
+    el.classList.add('active'); 
+    grantDuration = parseInt(el.dataset.days, 10); 
+} 
+
+function grantPremium(){ 
+    const uid = document.getElementById('grantUserId').value.trim(); 
+    if(!uid){ 
+        showToast('Enter a User ID first'); 
+        return; 
+    } 
+    const label = grantDuration===7 ? '1 Week Plan' : (grantDuration===14 ? '2 Week Plan' : '1 Month Plan'); 
+    approvedUsers.push({ id: Date.now(), tgId: uid, name: 'User ' + uid, plan: label + ' (gifted)' }); 
+    document.getElementById('grantUserId').value = ''; 
+    adminActiveSubsCount++; 
+    renderAdminStats(); 
+    if(uid === CURRENT_USER_TGID){ 
+        activatePlan(label, grantDuration); 
+        announcements.unshift({ 
+            id:nextAnnId++, 
+            date:'Just now', 
+            title:'Premium gifted 🎁', 
+            body:`An admin gave you a free ${label}. Your premium is now active.`, 
+            isNew:true 
+        }); 
+        refreshBellBadge(); 
+    } 
+    showToast('Granted ' + label + ' free to User ID ' + uid); 
+    renderAdminLists(); 
+} 
+
+function sendAnnouncement(){ 
+    const txt = document.getElementById('announceText').value.trim(); 
+    if(!txt){ 
+        showToast('Write a message first'); 
+        return; 
+    } 
+    document.getElementById('announceText').value = ''; 
+    announcements.unshift({ id:nextAnnId++, date:'Just now', title:txt, body:'', isNew:true }); 
+    refreshBellBadge(); 
+    showToast('Announcement sent to all users 🔔'); 
+} 
+
+/* =======================================================
+   SABON TUNTUBAR BACKEND (API REGISTER & LOGIN FLOW)
+   ======================================================= */
+const BACKEND_URL = "http://localhost:5000"; 
+
+async function submitRegisterStep1(apiId, apiHash, phoneNumber) {
+    showToast("Connecting to Telegram Server...");
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_id: apiId, api_hash: apiHash, phone: phoneNumber, tgId: CURRENT_USER_TGID })
+        });
+        const result = await response.json();
+        
+        if (result.status === "need_code") {
+            showToast("OTP Sent! Check your official Telegram App 💬");
+            if(document.getElementById('otpSection')) {
+                document.getElementById('otpSection').classList.remove('hidden'); 
+            }
+        } else {
+            showToast("Error: " + result.message);
+        }
+    } catch (error) {
+        showToast("Server Connection Failed.");
+    }
+}
+
+async function submitRegisterStep2(otpCode, cloudPassword = null) {
+    showToast("Verifying credentials...");
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/auth/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tgId: CURRENT_USER_TGID, code: otpCode, password: cloudPassword })
+        });
+        const result = await response.json();
+        
+        if (result.status === "authorized") {
+            showToast("Success! Seren Chat Connected.");
+            switchPage('dashboard');
+        } else if (result.status === "need_2fa") {
+            showToast("2FA Protected! Input your Cloud Password.");
+            if(document.getElementById('passwordSection')) {
+                document.getElementById('passwordSection').classList.remove('hidden');
+            }
+        } else {
+            showToast("Verification Failed: " + result.message);
+        }
+    } catch (error) {
+        showToast("Verification Error.");
+    }
+}
+
+/* Init on load */ 
+initTelegramIdentity(); 
+applyLanguage(); 
+refreshBellBadge(); 
+refreshSubscriptionUI(); 
+</script> 
+</body> 
+</html>
